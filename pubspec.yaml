@@ -1,0 +1,63 @@
+name: moodmates
+description: "Moodmates - Game Edukasi SEL untuk Anak TK (Usia 4-6 Tahun)"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # Navigation
+  go_router: ^14.2.7
+
+  # ML Kit face detection (Expression Mirroring game)
+  google_mlkit_face_detection: ^0.11.0
+
+  # Camera feed (Expression Mirroring game)
+  camera: ^0.11.0+2
+
+  # Audio playback (voice instructions + SFX)
+  just_audio: ^0.9.40
+
+  # Local storage (progress, PIN hash, child profile)
+  shared_preferences: ^2.3.2
+
+  # Celebration confetti animation
+  confetti: ^0.7.0
+
+  # Lottie character animations
+  lottie: ^3.1.2
+
+  # PIN hashing
+  crypto: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mockito: ^5.4.4
+  build_runner: ^2.4.9
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Character & emotion face illustrations
+    - assets/images/characters/
+    # Social situation illustrations
+    - assets/images/scenarios/
+    # Voice instructions per screen
+    - assets/audio/instructions/
+    # Audio praise ("Hebat!", "Kamu pintar!", "Luar biasa!")
+    - assets/audio/praise/
+    # Correct/incorrect sound effects
+    - assets/audio/sfx/
