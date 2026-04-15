@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../models/emotion.dart';
@@ -49,6 +50,7 @@ class _ExpressionMirroringScreenState
   @override
   void initState() {
     super.initState();
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _targetEmotion = mirroringEmotions[0];
     _faceService.init();
     _initCamera();
@@ -123,8 +125,12 @@ class _ExpressionMirroringScreenState
   }
 
   Future<void> _onCorrectExpression() async {
+    // Guard against re-entry from rapid stream events before the state flip
+    // propagates. Set celebrating synchronously before any async gap.
+    if (_state == _ScreenState.celebrating) return;
+    _state = _ScreenState.celebrating;
     _faceService.stopProcessing();
-    setState(() => _state = _ScreenState.celebrating);
+    setState(() {});
 
     // Capture providers before async gaps
     final progressProvider = context.read<ProgressProvider>();
@@ -168,6 +174,7 @@ class _ExpressionMirroringScreenState
     _detectionSub?.cancel();
     _faceService.dispose();
     _cameraController?.dispose();
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
 
@@ -224,7 +231,7 @@ class _ExpressionMirroringScreenState
   Widget _buildBody() {
     if (_state == _ScreenState.selfReport) return _buildSelfReportMode();
     if (_state == _ScreenState.cameraInit) {
-      return const Center(child: CircularProgressIndicator());
+      return const _CameraLoadingState();
     }
     return _buildCameraMode();
   }
@@ -312,6 +319,36 @@ class _ExpressionMirroringScreenState
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraLoadingState extends StatelessWidget {
+  const _CameraLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Menyiapkan kamera...',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.blueGrey,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Tunggu sebentar ya.',
+            style: TextStyle(color: Colors.blueGrey),
           ),
         ],
       ),
