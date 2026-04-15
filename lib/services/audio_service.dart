@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 
 /// Centralised audio playback.
@@ -23,7 +24,17 @@ class AudioService {
   }
 
   /// Play an audio asset. Safe to call when device is muted — just silent.
+  /// Silently skips if the asset file has not been added to the bundle yet.
   Future<void> play(AudioAsset asset) async {
+    try {
+      // Check the asset exists in the bundle before handing it to just_audio.
+      // just_audio throws a FlutterError (not a regular exception) for missing
+      // assets, which triggers the debug error overlay even inside try/catch.
+      await rootBundle.load(asset.path);
+    } catch (_) {
+      // Asset not bundled yet — skip silently.
+      return;
+    }
     try {
       await _player.stop();
       await _player.setAsset(asset.path);
@@ -52,6 +63,7 @@ enum AudioAsset {
   praiseHebat,
   praiseKamuPintar,
   praiseLuarBiasa,
+  praiseBagusSekali,
   // Game instructions
   instructionEmotionRecognition,
   instructionExpressionMirroring,
@@ -77,6 +89,8 @@ extension AudioAssetPath on AudioAsset {
         return 'assets/audio/praise/kamu_pintar.mp3';
       case AudioAsset.praiseLuarBiasa:
         return 'assets/audio/praise/luar_biasa.mp3';
+      case AudioAsset.praiseBagusSekali:
+        return 'assets/audio/praise/bagus_sekali.mp3';
       case AudioAsset.instructionEmotionRecognition:
         return 'assets/audio/instructions/game_emotion_recognition.mp3';
       case AudioAsset.instructionExpressionMirroring:
