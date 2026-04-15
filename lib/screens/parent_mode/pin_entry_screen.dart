@@ -130,10 +130,15 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   @override
   Widget build(BuildContext context) {
     String prompt;
+    String subtitle;
     if (_isSettingPin) {
       prompt = _isConfirming ? 'Konfirmasi PIN baru' : 'Buat PIN orang tua';
+      subtitle = _isConfirming
+          ? 'Masukkan lagi 4 angka yang sama.'
+          : 'Pakai 4 angka yang mudah diingat orang tua.';
     } else {
       prompt = 'Masukkan PIN orang tua';
+      subtitle = 'PIN ini membuka dashboard dan data perkembangan anak.';
     }
 
     return Scaffold(
@@ -159,7 +164,19 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
             Text(
               prompt,
               style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: Colors.brown),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.brown,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
             ),
             const SizedBox(height: 24),
 
