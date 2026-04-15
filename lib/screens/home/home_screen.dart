@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/progress_provider.dart';
 
 /// Main menu screen — the first screen children see.
 ///
-/// Design requirements (ages 4–6):
-///   • Large touch targets (64dp+)
-///   • Character mascot visible on entry
-///   • Audio instruction auto-plays on load
-///   • No text-only navigation — icons + audio labels
+/// Design: hybrid full-width cards (see DESIGN.md).
+///   • Full-width zone-color cards, no horizontal margin
+///   • Hard colored offset shadows (DESIGN.md risk #1)
+///   • Icon circle on left, Baloo 2 bold title, DM Sans subtitle
+///   • 64dp+ touch targets
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -21,7 +22,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-play welcome audio on screen load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // TODO: play welcome audio when assets are added
       // context.read<AudioService>().play(AudioAsset.instructionHome);
@@ -36,84 +36,82 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: const Color(0xFFFFF8E7),
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header / Mascot ───────────────────────────────────────────
+            // ── Greeting ─────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Greeting
-                  if (progress.childName.isNotEmpty)
-                    Text(
-                      'Halo, ${progress.childName}! 👋',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5C4033),
-                      ),
-                    )
-                  else
-                    const Text(
-                      'Halo! 👋',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5C4033),
-                      ),
+                  Text(
+                    progress.childName.isNotEmpty
+                        ? 'Halo, ${progress.childName}! 👋'
+                        : 'Halo! 👋',
+                    style: GoogleFonts.baloo2(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF3D2B1A),
+                      height: 1.2,
                     ),
-                  const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 4),
                   const Text(
-                    'Mau bermain apa hari ini?',
-                    style: TextStyle(fontSize: 18, color: Colors.brown),
+                    'Ayo pilih permainan hari ini.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF8D6E63),
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // ── Game Buttons ──────────────────────────────────────────────
+            // ── Game Cards ───────────────────────────────────────────────
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: GridView.count(
-                  crossAxisCount: 1,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 3.5,
-                  children: [
-                    _GameMenuButton(
-                      icon: Icons.face,
-                      label: 'Kenali Emosi',
-                      subtitle: 'Tebak perasaan temanmu',
-                      color: const Color(0xFFFFB347),
-                      onTap: () => context.push('/emotion-recognition'),
-                    ),
-                    _GameMenuButton(
-                      icon: Icons.camera_front,
-                      label: 'Tiru Ekspresi',
-                      subtitle: 'Tunjukkan ekspresimu!',
-                      color: const Color(0xFF87CEEB),
-                      onTap: () => context.push('/expression-mirroring'),
-                    ),
-                    _GameMenuButton(
-                      icon: Icons.groups,
-                      label: 'Situasi Sosial',
-                      subtitle: 'Apa yang harus dilakukan?',
-                      color: const Color(0xFF98FB98),
-                      onTap: () => context.push('/social-situations'),
-                    ),
-                  ],
-                ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                children: [
+                  _GameCard(
+                    label: 'Kenali Emosi',
+                    subtitle: 'Tebak perasaan dari wajah',
+                    zoneColor: const Color(0xFFFF9A3C),
+                    shadowColor: const Color(0xFFC85A00),
+                    iconData: Icons.face_rounded,
+                    onTap: () => context.push('/emotion-recognition'),
+                  ),
+                  _GameCard(
+                    label: 'Tiru Ekspresi',
+                    subtitle: 'Tunjukkan ekspresimu!',
+                    zoneColor: const Color(0xFF4BA3C3),
+                    shadowColor: const Color(0xFF1464A0),
+                    iconData: Icons.camera_front_rounded,
+                    onTap: () => context.push('/expression-mirroring'),
+                  ),
+                  _GameCard(
+                    label: 'Situasi Sosial',
+                    subtitle: 'Pilih perasaan yang cocok',
+                    zoneColor: const Color(0xFF4CAF6E),
+                    shadowColor: const Color(0xFF14824A),
+                    iconData: Icons.groups_rounded,
+                    onTap: () => context.push('/social-situations'),
+                  ),
+                ],
               ),
             ),
 
-            // ── Parent Mode Button ────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: TextButton.icon(
-                onPressed: () => context.push('/parent-pin'),
-                icon: const Icon(Icons.lock_outline, size: 18),
-                label: const Text('Mode Orang Tua'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.brown.shade400,
+            // ── Parent Mode ──────────────────────────────────────────────
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: TextButton.icon(
+                  onPressed: () => context.push('/parent-pin'),
+                  icon: const Icon(Icons.lock_outline, size: 16),
+                  label: const Text('Masuk Mode Orang Tua'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF8D6E63),
+                    textStyle: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ),
@@ -124,67 +122,98 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _GameMenuButton extends StatelessWidget {
-  final IconData icon;
+class _GameCard extends StatelessWidget {
   final String label;
   final String subtitle;
-  final Color color;
+  final Color zoneColor;
+  final Color shadowColor;
+  final IconData iconData;
   final VoidCallback onTap;
 
-  const _GameMenuButton({
-    required this.icon,
+  const _GameCard({
     required this.label,
     required this.subtitle,
-    required this.color,
+    required this.zoneColor,
+    required this.shadowColor,
+    required this.iconData,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.5),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Row(
-          children: [
-            Icon(icon, size: 48, color: Colors.white),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      // Bottom offset space so the hard shadow doesn't clip
+      padding: const EdgeInsets.only(bottom: 20),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          // Hard colored offset shadow — DESIGN.md risk #1
+          decoration: BoxDecoration(
+            color: shadowColor,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          // The shadow offset is achieved by translating the card up/left
+          // so only the shadow container peeks out on the bottom-right.
+          child: Transform.translate(
+            offset: const Offset(-5, -7),
+            child: Container(
+              height: 110,
+              decoration: BoxDecoration(
+                color: zoneColor,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
                 children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  // Icon circle
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(iconData, size: 36, color: Colors.white),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Text
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          label,
+                          style: GoogleFonts.baloo2(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
+
+                  // Arrow
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    size: 18,
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white70),
-          ],
+          ),
         ),
       ),
     );

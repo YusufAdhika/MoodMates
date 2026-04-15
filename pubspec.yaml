@@ -40,6 +40,9 @@ dependencies:
   # PIN hashing
   crypto: ^3.0.3
 
+  # Fonts: Baloo 2 (display/children) + DM Sans (body/parent UI)
+  google_fonts: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
