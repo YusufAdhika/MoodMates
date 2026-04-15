@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/emotion.dart';
 import '../services/audio_service.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,7 @@ import 'package:provider/provider.dart';
 class EmotionCard extends StatelessWidget {
   final Emotion emotion;
   final bool isSelected;
-  final bool isCorrect;   // null = not yet revealed
+  final bool isCorrect; // null = not yet revealed
   final bool isRevealed;
   final VoidCallback onTap;
 
@@ -30,52 +31,68 @@ class EmotionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     Color borderColor = Colors.transparent;
     if (isRevealed && isSelected) {
-      borderColor = isCorrect ? Colors.green : Colors.red;
+      borderColor =
+          isCorrect ? const Color(0xFF4CAF6E) : const Color(0xFFE53935);
     }
+    final emotionColor = _emotionToColor(emotion);
+    final shadowColor = _emotionShadowColor(emotion);
 
-    return GestureDetector(
-      onTap: () {
-        // Play emotion audio label when tapped
-        context.read<AudioService>().play(
-          _emotionToAudio(emotion),
-        );
-        onTap();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        constraints: const BoxConstraints(minWidth: 64, minHeight: 64),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // TODO: replace with Image.asset(emotion.characterAsset)
-            // once character illustrations are in assets/images/characters/
-            Icon(
-              _emotionToIcon(emotion),
-              size: 48,
-              color: _emotionToColor(emotion),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              emotion.labelId,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+    return Padding(
+      padding: const EdgeInsets.only(right: 5, bottom: 7),
+      child: GestureDetector(
+        onTap: () {
+          context.read<AudioService>().play(_emotionToAudio(emotion));
+          onTap();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: shadowColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Transform.translate(
+            offset: const Offset(-5, -7),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOut,
+              constraints: const BoxConstraints(minWidth: 64, minHeight: 64),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: borderColor, width: 4),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: emotionColor.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _emotionToIcon(emotion),
+                      size: 42,
+                      color: emotionColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    emotion.labelId,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF3D2B1A),
+                      height: 1.1,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -118,17 +135,34 @@ class EmotionCard extends StatelessWidget {
   Color _emotionToColor(Emotion e) {
     switch (e) {
       case Emotion.happy:
-        return Colors.amber;
+        return const Color(0xFFFF9A3C);
       case Emotion.sad:
-        return Colors.blue;
+        return const Color(0xFF4BA3C3);
       case Emotion.angry:
-        return Colors.red;
+        return const Color(0xFFE53935);
       case Emotion.surprised:
-        return Colors.purple;
+        return const Color(0xFFFFC247);
       case Emotion.scared:
-        return Colors.deepPurple;
+        return const Color(0xFF7E57C2);
       case Emotion.neutral:
-        return Colors.grey;
+        return const Color(0xFF8D6E63);
+    }
+  }
+
+  Color _emotionShadowColor(Emotion e) {
+    switch (e) {
+      case Emotion.happy:
+        return const Color(0xFFC85A00);
+      case Emotion.sad:
+        return const Color(0xFF1464A0);
+      case Emotion.angry:
+        return const Color(0xFF9F1E1B);
+      case Emotion.surprised:
+        return const Color(0xFFC49000);
+      case Emotion.scared:
+        return const Color(0xFF4D2A80);
+      case Emotion.neutral:
+        return const Color(0xFF5D4037);
     }
   }
 }

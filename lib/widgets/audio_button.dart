@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_service.dart';
 
@@ -28,48 +29,65 @@ class AudioButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (audioAsset != null) {
-          context.read<AudioService>().play(audioAsset!);
-        }
-        onTap();
-      },
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color ?? Theme.of(context).colorScheme.primary,
-          borderRadius: BorderRadius.circular(size / 4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: size * 0.45),
-            if (label.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: size * 0.14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    final buttonColor = color ?? const Color(0xFFFF9A3C);
+    final shadowColor = _shadowFor(buttonColor);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 5, bottom: 7),
+      child: GestureDetector(
+        onTap: () {
+          if (audioAsset != null) {
+            context.read<AudioService>().play(audioAsset!);
+          }
+          onTap();
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: shadowColor,
+            borderRadius: BorderRadius.circular(size / 4),
+          ),
+          child: Transform.translate(
+            offset: const Offset(-5, -7),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: buttonColor,
+                borderRadius: BorderRadius.circular(size / 4),
               ),
-            ],
-          ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.white, size: size * 0.45),
+                  if (label.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: GoogleFonts.baloo2(
+                        color: Colors.white,
+                        fontSize: size * 0.16,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Color _shadowFor(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    return hsl
+        .withLightness((hsl.lightness - 0.28).clamp(0.0, 1.0))
+        .withSaturation((hsl.saturation + 0.1).clamp(0.0, 1.0))
+        .toColor();
   }
 }

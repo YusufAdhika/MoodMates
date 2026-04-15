@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/progress_provider.dart';
@@ -117,13 +118,79 @@ class _MoodmatesAppState extends State<MoodmatesApp> {
       routerConfig: _router,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFFB347),
+          seedColor: const Color(0xFFFF9A3C),
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        fontFamily: 'Roboto',
+        scaffoldBackgroundColor: const Color(0xFFFFF8E7),
+        textTheme: GoogleFonts.dmSansTextTheme().copyWith(
+          displayLarge: GoogleFonts.baloo2(
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF3D2B1A),
+            height: 1.1,
+          ),
+          displayMedium: GoogleFonts.baloo2(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF3D2B1A),
+            height: 1.15,
+          ),
+          titleLarge: GoogleFonts.baloo2(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3D2B1A),
+            height: 1.15,
+          ),
+          titleMedium: GoogleFonts.dmSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3D2B1A),
+          ),
+          bodyLarge: GoogleFonts.dmSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF3D2B1A),
+          ),
+          bodyMedium: GoogleFonts.dmSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF3D2B1A),
+          ),
+          bodySmall: GoogleFonts.dmSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF8D6E63),
+          ),
+          labelLarge: GoogleFonts.dmSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3D2B1A),
+          ),
+        ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color(0xFFFF9A3C),
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          titleTextStyle: GoogleFonts.baloo2(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFFFF8E7),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
       ),
     );
   }
 }
-
