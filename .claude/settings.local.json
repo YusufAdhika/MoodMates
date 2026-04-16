@@ -3,7 +3,10 @@
     "allow": [
       "WebSearch",
       "Bash(flutter pub:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test *)",
+      "Read(//private/tmp/**)",
+      "Read(//tmp/**)"
     ]
   }
 }

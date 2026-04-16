@@ -40,6 +40,19 @@ class ProgressScreen extends StatelessWidget {
                 ),
               ),
             ),
+          if (progress.totalSessions == 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text(
+                'Belum ada sesi bermain. Coba selesaikan satu permainan dulu, lalu bintang akan muncul di sini.',
+                style: TextStyle(color: Colors.brown, fontSize: 14),
+              ),
+            ),
           ...GameProgress.allGameIds.map(
             (id) => _GameStatCard(gameId: id, progress: progress),
           ),
@@ -60,6 +73,7 @@ class _GameStatCard extends StatelessWidget {
     final plays = progress.playCounts[gameId] ?? 0;
     final correct = progress.correctCounts[gameId] ?? 0;
     final accuracy = progress.accuracyFor(gameId);
+    final stars = progress.starsFor(gameId);
     final lastPlayed = progress.lastPlayed[gameId];
 
     return Card(
@@ -86,9 +100,11 @@ class _GameStatCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            _StarRow(stars: stars, color: _gameColor(gameId)),
+            const SizedBox(height: 12),
             if (plays == 0)
               const Text(
-                'Belum ada permainan',
+                'Belum dimainkan',
                 style: TextStyle(color: Colors.grey, fontSize: 14),
               )
             else ...[
@@ -174,6 +190,30 @@ class _StatRow extends StatelessWidget {
               style: const TextStyle(
                   fontWeight: FontWeight.bold, fontSize: 14)),
         ],
+      ),
+    );
+  }
+}
+
+class _StarRow extends StatelessWidget {
+  final int stars;
+  final Color color;
+
+  const _StarRow({required this.stars, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(
+        3,
+        (index) => Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Icon(
+            index < stars ? Icons.star_rounded : Icons.star_border_rounded,
+            color: index < stars ? color : Colors.grey.shade400,
+            size: 28,
+          ),
+        ),
       ),
     );
   }

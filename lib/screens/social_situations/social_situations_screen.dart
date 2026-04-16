@@ -143,7 +143,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen> {
           onDismiss: () {
             Navigator.of(context).pop();
             if (_round >= _totalRounds) {
-              context.go('/');
+              context.go('/home');
             } else {
               setState(() => _round++);
               _nextRound();
@@ -190,7 +190,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) context.go('/');
+        if (shouldPop && context.mounted) context.go('/home');
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF1F8E9),
@@ -200,7 +200,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.green),
             onPressed: () async {
-              if (await _onWillPop() && context.mounted) context.go('/');
+              if (await _onWillPop() && context.mounted) context.go('/home');
             },
           ),
           title: Text(

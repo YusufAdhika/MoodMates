@@ -62,10 +62,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final storageService = context.read<StorageService>();
 
     try {
-      await progressProvider.setChildName(name);
+      await progressProvider.addProfile(name);
       await storageService.setPin(pin);
       if (!mounted) return;
-      context.go('/');
+      context.go('/home');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

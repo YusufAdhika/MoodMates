@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../models/game_progress.dart';
 import '../../providers/progress_provider.dart';
 
 /// Parent Dashboard — PIN-protected adult controls.
@@ -22,15 +23,18 @@ class ParentDashboardScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFFFF8E7),
       appBar: AppBar(
         backgroundColor: const Color(0xFFFFB347),
-        title: const Text('Mode Orang Tua'),
+        title: const Text('Dashboard Orang Tua'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.go('/home'),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          _SummaryCard(progress: progress),
+          const SizedBox(height: 16),
+
           // Child name
           _DashboardSection(
             title: 'Nama Anak',
@@ -58,13 +62,26 @@ class ParentDashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          _DashboardSection(
+            title: 'Profil Anak',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.switch_account, color: Colors.orange),
+              title: const Text('Pilih, tambah, atau hapus profil anak'),
+              subtitle: const Text('Hapus profil perlu PIN orang tua.'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => context.push('/profiles'),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Progress
           _DashboardSection(
             title: 'Perkembangan',
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.bar_chart, color: Colors.orange),
-              title: const Text('Lihat detail perkembangan'),
+              title: const Text('Lihat detail bintang dan progres'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => context.push('/progress'),
             ),
@@ -78,14 +95,14 @@ class ParentDashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Unduh data sesi bermain untuk keperluan penelitian.',
+                  'Buka ringkasan data sesi bermain untuk keperluan penelitian.',
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: () => _exportCsv(context),
                   icon: const Icon(Icons.download),
-                  label: const Text('Ekspor CSV'),
+                  label: const Text('Lihat Data CSV'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
@@ -105,19 +122,22 @@ class ParentDashboardScreen extends StatelessWidget {
                 _TipItem(
                   icon: Icons.face,
                   title: 'Kenali Emosi',
-                  tip: 'Tunjuk karakter dan tanya: "Menurutmu ini perasaan apa?"',
+                  tip:
+                      'Tunjuk karakter dan tanya: "Menurutmu ini perasaan apa?"',
                 ),
                 SizedBox(height: 8),
                 _TipItem(
                   icon: Icons.camera_front,
                   title: 'Tiru Ekspresi',
-                  tip: 'Duduk di depan anak dan tunjukkan ekspresi contoh bersama-sama.',
+                  tip:
+                      'Duduk di depan anak dan tunjukkan ekspresi contoh bersama-sama.',
                 ),
                 SizedBox(height: 8),
                 _TipItem(
                   icon: Icons.groups,
                   title: 'Situasi Sosial',
-                  tip: 'Setelah bermain, diskusikan: "Kenapa kita merasa seperti itu?"',
+                  tip:
+                      'Setelah bermain, diskusikan: "Kenapa kita merasa seperti itu?"',
                 ),
               ],
             ),
@@ -129,7 +149,7 @@ class ParentDashboardScreen extends StatelessWidget {
             onPressed: () => _confirmReset(context),
             icon: const Icon(Icons.refresh, color: Colors.red),
             label: const Text(
-              'Reset Semua Progres',
+              'Reset Semua Data Bermain',
               style: TextStyle(color: Colors.red),
             ),
             style: OutlinedButton.styleFrom(
@@ -214,8 +234,7 @@ class ParentDashboardScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                const Text('Reset', style: TextStyle(color: Colors.red)),
+            child: const Text('Reset', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -228,6 +247,79 @@ class ParentDashboardScreen extends StatelessWidget {
         );
       }
     }
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final GameProgress progress;
+
+  const _SummaryCard({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFD27D), Color(0xFFFFB347)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _SummaryItem(
+            icon: Icons.star_rounded,
+            label: 'Bintang',
+            value: '${progress.totalStars}/9',
+          ),
+          _SummaryItem(
+            icon: Icons.sports_esports_rounded,
+            label: 'Sesi',
+            value: '${progress.totalSessions}',
+          ),
+          _SummaryItem(
+            icon: Icons.check_circle_rounded,
+            label: 'Benar',
+            value: '${progress.totalCorrect}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _SummaryItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white, size: 28),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+      ],
+    );
   }
 }
 
@@ -294,8 +386,7 @@ class _TipItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
               Text(tip,
                   style: const TextStyle(color: Colors.grey, fontSize: 13)),
             ],

@@ -10,6 +10,7 @@ import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/parent_mode/parent_dashboard_screen.dart';
 import 'screens/parent_mode/pin_entry_screen.dart';
+import 'screens/profile/profile_select_screen.dart';
 import 'screens/progress/progress_screen.dart';
 import 'screens/social_situations/social_situations_screen.dart';
 import 'services/audio_service.dart';
@@ -42,12 +43,22 @@ void main() async {
 GoRouter _buildRouter(ProgressProvider progressProvider) {
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: progressProvider,
     redirect: (context, state) {
-      final hasName = progressProvider.progress.childName.isNotEmpty;
+      final hasProfiles = progressProvider.hasAnyProfile;
+      final hasActiveProfile = progressProvider.hasActiveProfile &&
+          progressProvider.progress.childName.isNotEmpty;
+      final isHome = state.matchedLocation == '/home';
       final isOnboarding = state.matchedLocation == '/onboarding';
+      final isProfiles = state.matchedLocation == '/profiles';
 
-      if (!hasName && !isOnboarding) return '/onboarding';
-      if (hasName && isOnboarding) return '/';
+      if (!hasProfiles && !isOnboarding) return '/onboarding';
+      if (hasProfiles && !hasActiveProfile && !isProfiles) return '/profiles';
+      if (hasProfiles && isOnboarding) {
+        return hasActiveProfile ? '/home' : '/profiles';
+      }
+      if (hasProfiles && state.matchedLocation == '/') return '/profiles';
+      if (!hasProfiles && isHome) return '/onboarding';
       return null;
     },
     routes: [
@@ -56,7 +67,15 @@ GoRouter _buildRouter(ProgressProvider progressProvider) {
         builder: (_, __) => const OnboardingScreen(),
       ),
       GoRoute(
+        path: '/profiles',
+        builder: (_, __) => const ProfileSelectScreen(),
+      ),
+      GoRoute(
         path: '/',
+        builder: (_, __) => const ProfileSelectScreen(),
+      ),
+      GoRoute(
+        path: '/home',
         builder: (_, __) => const HomeScreen(),
       ),
       GoRoute(

@@ -2,22 +2,83 @@ import 'package:flutter/foundation.dart';
 import '../models/game_progress.dart';
 import '../services/storage_service.dart';
 
-/// Holds the current child's GameProgress in memory and syncs to StorageService.
+/// Manages the list of all child profiles and tracks the active one.
 ///
-/// Screens read progress via context.watch<ProgressProvider>().progress
-/// and record sessions via context.read<ProgressProvider>().recordSession(...)
+/// Usage:
+///   context.watch<ProgressProvider>().progress   → active profile's progress
+///   context.watch<ProgressProvider>().profiles   → all profiles
+///   context.read<ProgressProvider>().switchProfile(id)
+///   context.read<ProgressProvider>().addProfile(name)
+///   context.read<ProgressProvider>().deleteProfile(id)
 class ProgressProvider extends ChangeNotifier {
   final StorageService _storage;
 
-  GameProgress _progress = GameProgress.empty();
+  List<GameProgress> _profiles = [];
+  GameProgress? _activeProfile;
 
-  GameProgress get progress => _progress;
+  List<GameProgress> get profiles => List.unmodifiable(_profiles);
+
+  /// Active profile's progress. Falls back to empty if nothing is active.
+  GameProgress get progress => _activeProfile ?? GameProgress.empty(id: '');
+
+  bool get hasActiveProfile => _activeProfile != null;
+  bool get hasAnyProfile => _profiles.isNotEmpty;
 
   ProgressProvider(this._storage);
 
   Future<void> load() async {
-    _progress = await _storage.loadProgress();
+    _profiles = _storage.loadAllProfiles();
+    final activeId = _storage.activeProfileId;
+    if (activeId != null) {
+      _activeProfile = _profiles.cast<GameProgress?>().firstWhere(
+            (p) => p?.id == activeId,
+            orElse: () => null,
+          );
+    }
+    // If active ID points to deleted profile, fall back to first available
+    if (_activeProfile == null && _profiles.isNotEmpty) {
+      _activeProfile = _profiles.first;
+      await _storage.setActiveProfileId(_activeProfile!.id);
+    }
     notifyListeners();
+  }
+
+  /// Switch the active profile. No-op if ID not found.
+  Future<void> switchProfile(String id) async {
+    final profile = _profiles.cast<GameProgress?>().firstWhere(
+          (p) => p?.id == id,
+          orElse: () => null,
+        );
+    if (profile == null) return;
+    _activeProfile = profile;
+    await _storage.setActiveProfileId(id);
+    notifyListeners();
+  }
+
+  /// Create a new child profile and make it active.
+  Future<GameProgress> addProfile(String childName) async {
+    final newProfile = await _storage.addProfile(childName);
+    _profiles = _storage.loadAllProfiles();
+    _activeProfile = newProfile;
+    await _storage.setActiveProfileId(newProfile.id);
+    notifyListeners();
+    return newProfile;
+  }
+
+  /// Delete a profile by ID. If it was the active one, switches to first remaining.
+  /// Returns false if not found.
+  Future<bool> deleteProfile(String id) async {
+    final deleted = await _storage.deleteProfile(id);
+    if (!deleted) return false;
+    _profiles = _storage.loadAllProfiles();
+    if (_activeProfile?.id == id) {
+      _activeProfile = _profiles.isNotEmpty ? _profiles.first : null;
+      if (_activeProfile != null) {
+        await _storage.setActiveProfileId(_activeProfile!.id);
+      }
+    }
+    notifyListeners();
+    return true;
   }
 
   /// Call after each game session (correct or incorrect answer round).
@@ -25,48 +86,57 @@ class ProgressProvider extends ChangeNotifier {
     required String gameId,
     required bool wasCorrect,
   }) async {
-    _progress = _progress.copyWithSession(
+    if (_activeProfile == null) return;
+    _activeProfile = _activeProfile!.copyWithSession(
       gameId: gameId,
       wasCorrect: wasCorrect,
     );
+    _updateActiveInList();
     notifyListeners();
-    final saved = await _storage.saveProgress(_progress);
+    final saved = await _storage.saveProfile(_activeProfile!);
     if (!saved) {
       debugPrint('[ProgressProvider] Warning: progress not saved for $gameId');
     }
   }
 
   Future<void> setChildName(String name) async {
-    _progress = GameProgress(
-      childName: name,
-      playCounts: _progress.playCounts,
-      correctCounts: _progress.correctCounts,
-      lastPlayed: _progress.lastPlayed,
-    );
+    if (_activeProfile == null) return;
+    _activeProfile = _activeProfile!.copyWithName(name);
+    _updateActiveInList();
     notifyListeners();
-    await _storage.saveProgress(_progress);
+    await _storage.saveProfile(_activeProfile!);
   }
 
   Future<void> reset() async {
-    await _storage.clearProgress();
-    _progress = GameProgress.empty();
+    if (_activeProfile == null) return;
+    _activeProfile = _activeProfile!.copyWithResetStats();
+    _updateActiveInList();
     notifyListeners();
+    await _storage.saveProfile(_activeProfile!);
   }
 
-  /// Exports session data as CSV rows for thesis data collection.
-  /// Returns CSV string with header row.
+  /// Exports active profile's session data as CSV for thesis data collection.
   String exportCsv() {
+    final p = progress;
     final buffer = StringBuffer();
-    buffer.writeln('game,sessions,correct,accuracy,last_played');
+    buffer.writeln('child,game,sessions,correct,accuracy,last_played');
     for (final gameId in GameProgress.allGameIds) {
-      final sessions = _progress.playCounts[gameId] ?? 0;
-      final correct = _progress.correctCounts[gameId] ?? 0;
-      final accuracy = sessions > 0
-          ? (correct / sessions * 100).toStringAsFixed(1)
-          : '-';
-      final lastPlayed = _progress.lastPlayed[gameId]?.toIso8601String() ?? '-';
-      buffer.writeln('$gameId,$sessions,$correct,$accuracy%,$lastPlayed');
+      final sessions = p.playCounts[gameId] ?? 0;
+      final correct = p.correctCounts[gameId] ?? 0;
+      final accuracy =
+          sessions > 0 ? (correct / sessions * 100).toStringAsFixed(1) : '-';
+      final lastPlayed = p.lastPlayed[gameId]?.toIso8601String() ?? '-';
+      buffer.writeln(
+          '${p.childName},$gameId,$sessions,$correct,$accuracy%,$lastPlayed');
     }
     return buffer.toString();
+  }
+
+  void _updateActiveInList() {
+    if (_activeProfile == null) return;
+    final idx = _profiles.indexWhere((p) => p.id == _activeProfile!.id);
+    if (idx != -1) {
+      _profiles = List<GameProgress>.from(_profiles)..[idx] = _activeProfile!;
+    }
   }
 }

@@ -148,7 +148,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.brown),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.go('/home'),
         ),
       ),
       body: Center(

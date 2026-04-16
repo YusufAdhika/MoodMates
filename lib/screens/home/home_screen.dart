@@ -103,15 +103,31 @@ class _HomeScreenState extends State<HomeScreen> {
             // ── Parent Mode ──────────────────────────────────────────────
             Center(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: TextButton.icon(
-                  onPressed: () => context.push('/parent-pin'),
-                  icon: const Icon(Icons.lock_outline, size: 16),
-                  label: const Text('Masuk Mode Orang Tua'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF8D6E63),
-                    textStyle: const TextStyle(fontSize: 14),
-                  ),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => context.push('/profiles'),
+                      icon: const Icon(Icons.switch_account_rounded, size: 16),
+                      label: const Text('Ganti Anak'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF8D6E63),
+                        textStyle: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => context.push('/parent-pin'),
+                      icon: const Icon(Icons.lock_outline, size: 16),
+                      label: const Text('Mode Orang Tua'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF8D6E63),
+                        textStyle: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

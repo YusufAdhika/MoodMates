@@ -151,7 +151,7 @@ class _ExpressionMirroringScreenState
         onDismiss: () {
           Navigator.of(context).pop();
           if (_round >= _totalRounds) {
-            context.go('/');
+            context.go('/home');
           } else {
             setState(() {
               _round++;
@@ -205,7 +205,7 @@ class _ExpressionMirroringScreenState
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) context.go('/');
+        if (shouldPop && context.mounted) context.go('/home');
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFE3F2FD),
@@ -215,7 +215,7 @@ class _ExpressionMirroringScreenState
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.blueGrey),
             onPressed: () async {
-              if (await _onWillPop() && context.mounted) context.go('/');
+              if (await _onWillPop() && context.mounted) context.go('/home');
             },
           ),
           title: Text(

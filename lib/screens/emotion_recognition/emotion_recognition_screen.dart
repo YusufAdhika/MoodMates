@@ -101,7 +101,7 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
           onDismiss: () {
             Navigator.of(context).pop();
             if (_round >= _totalRounds) {
-              context.go('/');
+              context.go('/home');
             } else {
               setState(() => _round++);
               _nextRound();
@@ -149,7 +149,7 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) context.go('/');
+        if (shouldPop && context.mounted) context.go('/home');
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFFFF3E0),
@@ -159,7 +159,7 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.brown),
             onPressed: () async {
-              if (await _onWillPop() && context.mounted) context.go('/');
+              if (await _onWillPop() && context.mounted) context.go('/home');
             },
           ),
           title: Text(

@@ -44,6 +44,7 @@ class _CelebrationWidgetState extends State<CelebrationWidget> {
       AudioAsset.praiseHebat,
       AudioAsset.praiseKamuPintar,
       AudioAsset.praiseLuarBiasa,
+      AudioAsset.praiseBagusSekali,
     ];
     final random = Random();
     WidgetsBinding.instance.addPostFrameCallback((_) {
