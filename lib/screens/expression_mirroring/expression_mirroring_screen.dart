@@ -755,11 +755,11 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
               if (shouldExit && mounted) context.pop();
             },
             child: Container(
-              width: 40,
-              height: 40,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
                     color: _zoneShadow,
@@ -771,7 +771,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
               child: const Icon(
                 Icons.arrow_back_rounded,
                 color: _textDark,
-                size: 20,
+                size: 28,
               ),
             ),
           ),

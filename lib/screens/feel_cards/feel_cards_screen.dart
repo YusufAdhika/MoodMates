@@ -1061,11 +1061,11 @@ class _BackButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 64,
+        height: 64,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: const [
             BoxShadow(
               color: Color(0xFFC85A00),
@@ -1077,7 +1077,7 @@ class _BackButton extends StatelessWidget {
         child: const Icon(
           Icons.arrow_back_rounded,
           color: Color(0xFF3D2B1A),
-          size: 20,
+          size: 28,
         ),
       ),
     );
@@ -1104,11 +1104,11 @@ class _NavButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 56,
-          height: 56,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.6),

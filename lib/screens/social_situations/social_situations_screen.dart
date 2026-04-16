@@ -691,11 +691,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               if (shouldExit && mounted) context.pop();
             },
             child: Container(
-              width: 40,
-              height: 40,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
                     color: _zoneShadow,
@@ -707,7 +707,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               child: const Icon(
                 Icons.arrow_back_rounded,
                 color: _textDark,
-                size: 20,
+                size: 28,
               ),
             ),
           ),
@@ -1507,10 +1507,10 @@ class _ThinkButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 56,
+        height: 64,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: color == Colors.white
               ? Border.all(color: _zoneColor, width: 2)
               : null,
