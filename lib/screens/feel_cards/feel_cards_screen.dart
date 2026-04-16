@@ -423,7 +423,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
               Text(
                 '${_currentIndex + 1} dari ${_cards.length}',
                 style: GoogleFonts.dmSans(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF8D6E63),
                 ),
@@ -513,7 +513,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                 Text(
                   'Ketuk kartu untuk membuka!',
                   style: GoogleFonts.dmSans(
-                    fontSize: 13,
+                    fontSize: 16,
                     color: const Color(0xFF8D6E63),
                   ),
                 )
@@ -523,7 +523,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                       ? 'Geser → untuk lanjut'
                       : 'Kamu sudah lihat semuanya!',
                   style: GoogleFonts.dmSans(
-                    fontSize: 13,
+                    fontSize: 16,
                     color: const Color(0xFF8D6E63),
                   ),
                 ),
@@ -639,7 +639,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                 child: Text(
                   '${c.emoji} ${c.emotion.labelId}',
                   style: GoogleFonts.baloo2(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF3D2B1A),
                   ),
@@ -796,7 +796,7 @@ class _CardFront extends StatelessWidget {
                 'Siapa ya teman perasaan kita hari ini?',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.dmSans(
-                  fontSize: 14,
+                  fontSize: 16,
                   color: const Color(0xFF8D6E63),
                 ),
               ),
@@ -941,7 +941,7 @@ class _CardBack extends StatelessWidget {
                         Text(
                           'Raccoo berkata:',
                           style: GoogleFonts.dmSans(
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF8D6E63),
                             letterSpacing: 0.5,
@@ -969,7 +969,7 @@ class _CardBack extends StatelessWidget {
                     Text(
                       card.raccooSpeech,
                       style: GoogleFonts.dmSans(
-                        fontSize: 15,
+                        fontSize: 16,
                         height: 1.6,
                         color: const Color(0xFF3D2B1A),
                       ),
@@ -1000,7 +1000,7 @@ class _CardBack extends StatelessWidget {
                       child: Text(
                         card.whenExamples,
                         style: GoogleFonts.dmSans(
-                          fontSize: 13,
+                          fontSize: 16,
                           color: const Color(0xFF5D4037),
                           height: 1.5,
                         ),

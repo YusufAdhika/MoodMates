@@ -495,7 +495,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
           const SizedBox(height: 8),
           Text(
             'Tunggu sebentar ya! 📷',
-            style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
+            style: GoogleFonts.dmSans(fontSize: 16, color: _textMuted),
           ),
           const SizedBox(height: 24),
           const CircularProgressIndicator(color: _zoneColor),
@@ -714,7 +714,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                     Text(
                       t.emotion.labelId,
                       style: GoogleFonts.baloo2(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: _textDark,
                       ),
@@ -1096,7 +1096,7 @@ class _RaccooTipBubble extends StatelessWidget {
             child: Text(
               tip,
               style: GoogleFonts.dmSans(
-                fontSize: 13,
+                fontSize: 16,
                 color: _textDark,
                 height: 1.4,
               ),
@@ -1267,7 +1267,7 @@ class _NoFaceBanner extends StatelessWidget {
           Text(
             'Tampakkan wajahmu ke kamera! 📷',
             style: GoogleFonts.dmSans(
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
@@ -1295,7 +1295,7 @@ class _FeedbackOverlay extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: GoogleFonts.dmSans(
-          fontSize: 13,
+          fontSize: 16,
           fontWeight: FontWeight.w600,
           color: Colors.white,
           height: 1.4,

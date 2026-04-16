@@ -600,7 +600,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 Text(
                   'Pilih responmu:',
                   style: GoogleFonts.dmSans(
-                    fontSize: 13,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: _textMuted,
                     letterSpacing: 0.5,
@@ -935,7 +935,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 'Tidak apa-apa! Setiap latihan membuat kamu makin pintar! 💪',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.dmSans(
-                  fontSize: 13,
+                  fontSize: 16,
                   color: _textMuted,
                   height: 1.5,
                 ),
@@ -1055,7 +1055,7 @@ class _SituationCard extends StatelessWidget {
             scenario.situationNarration,
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
-              fontSize: 15,
+              fontSize: 16,
               height: 1.55,
               color: _textDark,
             ),
@@ -1240,7 +1240,7 @@ class _ChoiceCard extends StatelessWidget {
                   choice.label,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.baloo2(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _textDark,
                     height: 1.3,
@@ -1384,7 +1384,7 @@ class _FeedbackPanel extends StatelessWidget {
           Text(
             choice.feedback,
             style: GoogleFonts.dmSans(
-              fontSize: 14,
+              fontSize: 16,
               height: 1.55,
               color: _textDark,
             ),
@@ -1415,7 +1415,7 @@ class _FeedbackPanel extends StatelessWidget {
                     child: Text(
                       'Respons yang tepat: "${correctChoice.label.replaceAll('\n', ' ')}"',
                       style: GoogleFonts.dmSans(
-                        fontSize: 13,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: _successGreen,
                       ),
