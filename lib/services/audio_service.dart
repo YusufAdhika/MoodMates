@@ -74,6 +74,7 @@ enum AudioAsset {
   emotionAngry,
   emotionSurprised,
   emotionScared,
+  emotionDisgust,
 }
 
 extension AudioAssetPath on AudioAsset {
@@ -107,6 +108,8 @@ extension AudioAssetPath on AudioAsset {
         return 'assets/audio/instructions/emotion_surprised.mp3';
       case AudioAsset.emotionScared:
         return 'assets/audio/instructions/emotion_scared.mp3';
+      case AudioAsset.emotionDisgust:
+        return 'assets/audio/instructions/emotion_disgust.mp3';
     }
   }
 }

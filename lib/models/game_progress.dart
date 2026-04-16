@@ -11,11 +11,13 @@ class GameProgress {
   static const String gameEmotionRecognition = 'emotion_recognition';
   static const String gameExpressionMirroring = 'expression_mirroring';
   static const String gameSocialSituations = 'social_situations';
+  static const String gameFeelCards = 'feel_cards';
 
   static const List<String> allGameIds = [
     gameEmotionRecognition,
     gameExpressionMirroring,
     gameSocialSituations,
+    gameFeelCards,
   ];
 
   const GameProgress({

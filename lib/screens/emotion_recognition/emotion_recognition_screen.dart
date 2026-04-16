@@ -9,13 +9,15 @@ import '../../services/audio_service.dart';
 import '../../widgets/celebration_widget.dart';
 import '../../widgets/emotion_card.dart';
 
-/// Mini-game 1: Emotion Recognition
+/// Raccoo Feel Cards: interactive flashcards for six basic emotions.
 ///
-/// A character illustration shows an emotion. The child taps the matching
-/// emotion card from 4 choices. Correct answers trigger the celebration.
+/// The child taps the emotion card that matches Raccoo's audio instruction.
+/// This introduces six basic emotions inspired by Paul Ekman's universal
+/// emotion set: happy, sad, anger, fear, surprise, and disgust.
 ///
 /// Round flow:
-///   1. Display target emotion character (with audio instruction)
+///   1. Play Raccoo's instruction audio for the target emotion
+///   2. Display the target emotion image
 ///   2. Show 4 emotion cards (1 correct + 3 distractors)
 ///   3. Child taps a card (debounced 300ms)
 ///   4. Reveal correct/incorrect highlight
@@ -45,7 +47,7 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
   void initState() {
     super.initState();
     _nextRound();
-    // Auto-play game instruction audio
+    // Auto-play feature instruction audio
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context
           .read<AudioService>()
@@ -60,6 +62,11 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
       _selectedEmotion = null;
       _revealed = false;
       _isTapLocked = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AudioService>().play(_emotionToAudio(_targetEmotion));
     });
   }
 
@@ -126,7 +133,7 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
     final exit = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Selesai bermain?'),
+        title: const Text('Selesai belajar emosi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -173,11 +180,20 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
             children: [
               // ── Instruction ─────────────────────────────────────────────
               const Text(
-                'Ini perasaan apa?',
+                'Raccoo Feel Cards',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.brown,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Sentuh kartu emosi yang sesuai dengan instruksi suara Raccoo untuk mengenal 6 emosi dasar.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF8D6E63),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -198,9 +214,22 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
                     ),
                   ],
                 ),
-                child: const Center(
-                  // TODO: Image.asset(_targetEmotion.characterAsset)
-                  child: Icon(Icons.face, size: 80, color: Colors.orange),
+                child: Center(
+                  child: ClipOval(
+                    child: Image.asset(
+                      _targetEmotion.characterAsset,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) {
+                        return const Icon(
+                          Icons.face,
+                          size: 80,
+                          color: Colors.orange,
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 32),
@@ -227,5 +256,24 @@ class _EmotionRecognitionScreenState extends State<EmotionRecognitionScreen> {
         ),
       ),
     );
+  }
+
+  AudioAsset _emotionToAudio(Emotion emotion) {
+    switch (emotion) {
+      case Emotion.happy:
+        return AudioAsset.emotionHappy;
+      case Emotion.sad:
+        return AudioAsset.emotionSad;
+      case Emotion.angry:
+        return AudioAsset.emotionAngry;
+      case Emotion.scared:
+        return AudioAsset.emotionScared;
+      case Emotion.surprised:
+        return AudioAsset.emotionSurprised;
+      case Emotion.disgust:
+        return AudioAsset.emotionDisgust;
+      case Emotion.neutral:
+        return AudioAsset.emotionHappy;
+    }
   }
 }

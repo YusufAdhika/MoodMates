@@ -4,15 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/progress_provider.dart';
-import 'screens/emotion_recognition/emotion_recognition_screen.dart';
 import 'screens/expression_mirroring/expression_mirroring_screen.dart';
+import 'screens/social_situations/social_situations_screen.dart';
+import 'screens/feel_cards/feel_cards_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/parent_mode/parent_dashboard_screen.dart';
 import 'screens/parent_mode/pin_entry_screen.dart';
 import 'screens/profile/profile_select_screen.dart';
 import 'screens/progress/progress_screen.dart';
-import 'screens/social_situations/social_situations_screen.dart';
 import 'services/audio_service.dart';
 import 'services/storage_service.dart';
 
@@ -79,20 +79,20 @@ GoRouter _buildRouter(ProgressProvider progressProvider) {
         builder: (_, __) => const HomeScreen(),
       ),
       GoRoute(
-        path: '/emotion-recognition',
-        builder: (_, __) => const EmotionRecognitionScreen(),
+        path: '/progress',
+        builder: (_, __) => const ProgressScreen(),
       ),
       GoRoute(
-        path: '/expression-mirroring',
-        builder: (_, __) => const ExpressionMirroringScreen(),
-      ),
-      GoRoute(
-        path: '/social-situations',
+        path: '/think',
         builder: (_, __) => const SocialSituationsScreen(),
       ),
       GoRoute(
-        path: '/progress',
-        builder: (_, __) => const ProgressScreen(),
+        path: '/mirror',
+        builder: (_, __) => const ExpressionMirroringScreen(),
+      ),
+      GoRoute(
+        path: '/feel-cards',
+        builder: (_, __) => const FeelCardsScreen(),
       ),
       GoRoute(
         path: '/parent-pin',

@@ -121,9 +121,9 @@ class ParentDashboardScreen extends StatelessWidget {
               children: [
                 _TipItem(
                   icon: Icons.face,
-                  title: 'Kenali Emosi',
+                  title: 'Raccoo Feel Cards',
                   tip:
-                      'Tunjuk karakter dan tanya: "Menurutmu ini perasaan apa?"',
+                      'Ajak anak menyentuh kartu yang diminta Raccoo sambil mengulang nama 6 emosi dasar.',
                 ),
                 SizedBox(height: 8),
                 _TipItem(

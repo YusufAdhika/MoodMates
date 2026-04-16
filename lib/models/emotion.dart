@@ -11,8 +11,9 @@ enum Emotion {
   happy,
   sad,
   angry,
-  surprised,
   scared,
+  surprised,
+  disgust,
   neutral,
 }
 
@@ -26,10 +27,12 @@ extension EmotionExtension on Emotion {
         return 'Sedih';
       case Emotion.angry:
         return 'Marah';
-      case Emotion.surprised:
-        return 'Kaget';
       case Emotion.scared:
         return 'Takut';
+      case Emotion.surprised:
+        return 'Terkejut';
+      case Emotion.disgust:
+        return 'Jijik';
       case Emotion.neutral:
         return 'Biasa';
     }
@@ -56,11 +59,12 @@ const List<Emotion> mirroringEmotions = [
   Emotion.scared,
 ];
 
-/// Full emotion set used in Emotion Recognition and Social Situations.
+/// Full emotion set used in Raccoo Feel Cards and Social Situations.
 const List<Emotion> allEmotions = [
   Emotion.happy,
   Emotion.sad,
   Emotion.angry,
-  Emotion.surprised,
   Emotion.scared,
+  Emotion.surprised,
+  Emotion.disgust,
 ];

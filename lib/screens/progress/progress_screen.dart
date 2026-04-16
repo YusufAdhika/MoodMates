@@ -131,7 +131,7 @@ class _GameStatCard extends StatelessWidget {
   String _gameName(String id) {
     switch (id) {
       case GameProgress.gameEmotionRecognition:
-        return 'Kenali Emosi';
+        return 'Raccoo Feel Cards';
       case GameProgress.gameExpressionMirroring:
         return 'Tiru Ekspresi';
       case GameProgress.gameSocialSituations:

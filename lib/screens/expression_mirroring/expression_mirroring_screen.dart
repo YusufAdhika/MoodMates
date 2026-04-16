@@ -1,27 +1,151 @@
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/emotion.dart';
 import '../../models/game_progress.dart';
 import '../../providers/progress_provider.dart';
 import '../../services/audio_service.dart';
-import '../../widgets/celebration_widget.dart';
 import 'face_detector_service.dart';
 
-/// Mini-game 2: Expression Mirroring
+// ─── Zone Design Tokens ───────────────────────────────────────────────────────
+// Mirror zone: biru (#4BA3C3), bg (#E8F4FD), shadow rgba(20,100,160,0.40)
+
+const _zoneColor = Color(0xFF4BA3C3);
+const _zoneBg = Color(0xFFE8F4FD);
+const _zoneShadow = Color(0xFF1464A0);
+const _textDark = Color(0xFF3D2B1A);
+const _textMuted = Color(0xFF8D6E63);
+const _successGreen = Color(0xFF4CAF6E);
+
+// ─── Data Model — Per Emosi ───────────────────────────────────────────────────
+
+/// Data yang dibutuhkan untuk setiap ronde Mirror.
+class _MirrorTarget {
+  final Emotion emotion;
+
+  /// true → ML Kit bisa deteksi otomatis (happy/surprised/scared).
+  /// false → tampilkan kamera + panduan, lalu self-report setelah [selfReportDelay].
+  final bool mlKitDetectable;
+
+  /// Instruksi untuk anak, muncul di panel atas.
+  final String instruction;
+
+  /// Tip singkat dari Raccoo tentang cara membuat ekspresi ini.
+  final String raccooTip;
+
+  /// Feedback saat ekspresi cocok / self-report ditekan.
+  final String feedbackMatch;
+
+  /// Feedback sementara saat anak sedang mencoba (ML Kit mode).
+  final String feedbackTrying;
+
+  /// Ikon placeholder hingga aset ilustrasi tersedia.
+  final IconData icon;
+
+  const _MirrorTarget({
+    required this.emotion,
+    required this.mlKitDetectable,
+    required this.instruction,
+    required this.raccooTip,
+    required this.feedbackMatch,
+    required this.feedbackTrying,
+    required this.icon,
+  });
+}
+
+/// Daftar 6 emosi target — urutan akan diacak saat sesi dimulai.
+const List<_MirrorTarget> _allTargets = [
+  _MirrorTarget(
+    emotion: Emotion.happy,
+    mlKitDetectable: true,
+    instruction: 'Coba tirukan wajah SENANG!',
+    raccooTip: 'Tersenyum lebar dan angkat pipimu ke atas! 😊',
+    feedbackMatch: 'Wah, wajah senangnya sudah cocok! Kamu hebat!',
+    feedbackTrying: 'Hampir! Coba senyum lebih lebar...',
+    icon: Icons.sentiment_very_satisfied_rounded,
+  ),
+  _MirrorTarget(
+    emotion: Emotion.sad,
+    mlKitDetectable: false,
+    instruction: 'Coba tirukan wajah SEDIH!',
+    raccooTip: 'Turunkan sudut bibirmu dan coba kelihatan murung. 😢',
+    feedbackMatch: 'Keren! Wajah sedihmu bagus sekali! Kamu pintar!',
+    feedbackTrying: 'Ayo tunjukkan wajah sedih yang lebih dalam...',
+    icon: Icons.sentiment_very_dissatisfied_rounded,
+  ),
+  _MirrorTarget(
+    emotion: Emotion.angry,
+    mlKitDetectable: false,
+    instruction: 'Coba tirukan wajah MARAH!',
+    raccooTip: 'Kerutkan alismu ke tengah dan cemberut! 😠',
+    feedbackMatch: 'Kamu sudah berhasil! Wajah marahnya keren!',
+    feedbackTrying: 'Kerutkan alismu lebih kuat, yuk!',
+    icon: Icons.mood_bad_rounded,
+  ),
+  _MirrorTarget(
+    emotion: Emotion.scared,
+    mlKitDetectable: true,
+    instruction: 'Coba tirukan wajah TAKUT!',
+    raccooTip: 'Buka matamu lebar-lebar dan kelihatan kaget! 😨',
+    feedbackMatch: 'Bagus banget! Wajah takutnya sudah pas!',
+    feedbackTrying: 'Buka matamu lebih lebar lagi...',
+    icon: Icons.sentiment_dissatisfied_rounded,
+  ),
+  _MirrorTarget(
+    emotion: Emotion.surprised,
+    mlKitDetectable: true,
+    instruction: 'Coba tirukan wajah TERKEJUT!',
+    raccooTip: 'Buka mata dan mulutmu selebar mungkin! 😲',
+    feedbackMatch: 'Luar biasa! Wajah terkejutmu sudah cocok!',
+    feedbackTrying: 'Buka mulutmu lebih lebar — HAH!',
+    icon: Icons.sentiment_neutral_rounded,
+  ),
+  _MirrorTarget(
+    emotion: Emotion.disgust,
+    mlKitDetectable: false,
+    instruction: 'Coba tirukan wajah JIJIK!',
+    raccooTip: 'Kerutkan hidungmu dan angkat bibir atasmu — eugh! 🤢',
+    feedbackMatch: 'Berhasil! Wajah jijiknya sudah kelihatan!',
+    feedbackTrying: 'Kerutkan hidungmu lebih kuat...',
+    icon: Icons.sick_rounded,
+  ),
+];
+
+// ─── Screen State ─────────────────────────────────────────────────────────────
+
+enum _Phase {
+  /// Inisialisasi kamera atau minta izin.
+  cameraInit,
+
+  /// Kamera aktif, deteksi berjalan (ML Kit atau self-report timer).
+  detecting,
+
+  /// Ekspresi cocok — tampilkan feedback & tombol lanjut.
+  matched,
+
+  /// Kamera tidak tersedia — mode panduan animasi + self-report.
+  noCamera,
+
+  /// Semua ronde selesai — layar akhir.
+  done,
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+
+/// "Raccoo Mirror" — anak meniru ekspresi wajah sambil melihat kamera depan.
 ///
-/// Shows a target emotion (happy / surprised / scared). Child mimics the
-/// expression in front of the front camera. ML Kit detects the expression
-/// via smileProbability + eyeOpenProbability.
+/// State machine:  cameraInit → detecting ↔ matched → done
+///                           └→ noCamera  ↔ matched → done
 ///
-/// Falls back gracefully to self-report mode if:
-///   • Camera permission is denied
-///   • No front camera on device
-///
-/// State machine: IDLE → CAMERA_INIT → DETECTING ↔ EVALUATING → CELEBRATING
+/// Emosi yang bisa dideteksi otomatis (ML Kit):  happy, surprised, scared
+/// Emosi lainnya (sad, angry, disgust):           self-report setelah [_selfReportDelay]
 class ExpressionMirroringScreen extends StatefulWidget {
   const ExpressionMirroringScreen({super.key});
 
@@ -30,36 +154,109 @@ class ExpressionMirroringScreen extends StatefulWidget {
       _ExpressionMirroringScreenState();
 }
 
-enum _ScreenState { cameraInit, detecting, celebrating, selfReport }
+class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
+    with TickerProviderStateMixin {
+  // ── Config ───────────────────────────────────────────────────────────────
 
-class _ExpressionMirroringScreenState
-    extends State<ExpressionMirroringScreen> {
-  static const int _totalRounds = 3;
-  static const Duration _noFaceTimeout = Duration(seconds: 2);
+  /// Setelah berapa detik muncul tombol "Sudah Coba!" untuk emosi
+  /// yang tidak bisa dideteksi ML Kit (sad, angry, disgust).
+  static const Duration _selfReportDelay = Duration(seconds: 4);
+
+  // ── State ────────────────────────────────────────────────────────────────
+
+  _Phase _phase = _Phase.cameraInit;
+  late List<_MirrorTarget> _targets;
+  int _roundIndex = 0;
+
+  _MirrorTarget get _currentTarget => _targets[_roundIndex];
+
+  bool _faceDetected = false;
+  bool _selfReportVisible = false;
+  String _feedbackText = '';
+
+  // ── Services ─────────────────────────────────────────────────────────────
 
   CameraController? _cameraController;
   final FaceDetectorService _faceService = FaceDetectorService();
   StreamSubscription<FaceDetectionResult>? _detectionSub;
 
-  _ScreenState _state = _ScreenState.cameraInit;
-  int _round = 1;
-  late Emotion _targetEmotion;
-  bool _faceDetected = false;
-  Timer? _noFaceTimer;
+  // ── Timers ───────────────────────────────────────────────────────────────
+
+  Timer? _selfReportTimer;
+  Timer? _noFaceHintTimer;
+
+  // ── Animations ───────────────────────────────────────────────────────────
+
+  late AnimationController _pulseController;
+  late AnimationController _matchController;
+  late AnimationController _raccooController;
+
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _matchScaleAnimation;
+  late Animation<double> _raccooFloatAnimation;
+
+  // ── Lifecycle ────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    _targetEmotion = mirroringEmotions[0];
+
+    // Acak urutan emosi target setiap sesi
+    _targets = List<_MirrorTarget>.from(_allTargets)..shuffle(math.Random());
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _matchController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _matchScaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _matchController,
+        curve: const Cubic(0.34, 1.56, 0.64, 1),
+      ),
+    );
+
+    _raccooController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _raccooFloatAnimation = Tween<double>(begin: -6, end: 6).animate(
+      CurvedAnimation(parent: _raccooController, curve: Curves.easeInOut),
+    );
+
     _faceService.init();
     _initCamera();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context
           .read<AudioService>()
           .play(AudioAsset.instructionExpressionMirroring);
     });
   }
+
+  @override
+  void dispose() {
+    _selfReportTimer?.cancel();
+    _noFaceHintTimer?.cancel();
+    _detectionSub?.cancel();
+    _faceService.dispose();
+    _cameraController?.dispose();
+    _pulseController.dispose();
+    _matchController.dispose();
+    _raccooController.dispose();
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    super.dispose();
+  }
+
+  // ── Camera Init ──────────────────────────────────────────────────────────
 
   Future<void> _initCamera() async {
     try {
@@ -73,42 +270,112 @@ class _ExpressionMirroringScreenState
         front,
         ResolutionPreset.medium,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
       );
       await controller.initialize();
 
       if (!mounted) return;
       _cameraController = controller;
       _faceService.startProcessing(controller);
-
       _detectionSub = _faceService.results.listen(_onDetectionResult);
-      setState(() => _state = _ScreenState.detecting);
-      _startNoFaceTimer();
+
+      setState(() => _phase = _Phase.detecting);
+      _startRound();
     } catch (e) {
-      debugPrint('[ExpressionMirroring] Camera init failed: $e');
-      if (mounted) setState(() => _state = _ScreenState.selfReport);
+      debugPrint('[RaccooMirror] Camera init failed: $e');
+      if (mounted) {
+        setState(() => _phase = _Phase.noCamera);
+        _startRound();
+      }
     }
   }
 
-  void _startNoFaceTimer() {
-    _noFaceTimer?.cancel();
-    _noFaceTimer = Timer(_noFaceTimeout, () {
-      if (!_faceDetected && mounted) {
-        setState(() {}); // triggers "show face" prompt in UI
-      }
+  // ── Round Management ─────────────────────────────────────────────────────
+
+  /// Persiapkan ronde baru: reset flag, mulai timer self-report jika perlu.
+  void _startRound() {
+    _selfReportTimer?.cancel();
+    _noFaceHintTimer?.cancel();
+
+    setState(() {
+      _faceDetected = false;
+      _selfReportVisible = false;
+      _feedbackText = '';
     });
+
+    // Untuk emosi yang tidak bisa dideteksi ML Kit, atau di mode noCamera,
+    // mulai timer agar tombol "Sudah Coba!" muncul setelah beberapa detik.
+    if (!_currentTarget.mlKitDetectable || _phase == _Phase.noCamera) {
+      _selfReportTimer = Timer(_selfReportDelay, () {
+        if (mounted && _phase == _Phase.detecting ||
+            _phase == _Phase.noCamera) {
+          setState(() => _selfReportVisible = true);
+        }
+      });
+    }
   }
 
+  /// Dipanggil saat ekspresi cocok (otomatis atau self-report).
+  Future<void> _onExpressionMatched() async {
+    if (_phase == _Phase.matched || _phase == _Phase.done) return;
+    _faceService.stopProcessing();
+    _selfReportTimer?.cancel();
+
+    setState(() {
+      _phase = _Phase.matched;
+      _feedbackText = _currentTarget.feedbackMatch;
+    });
+
+    _matchController.forward(from: 0);
+    context.read<AudioService>().play(AudioAsset.correct);
+
+    await context.read<ProgressProvider>().recordSession(
+          gameId: GameProgress.gameExpressionMirroring,
+          wasCorrect: true,
+        );
+  }
+
+  /// Lanjut ke ronde berikutnya atau ke layar selesai.
+  void _nextRound() {
+    if (_roundIndex >= _targets.length - 1) {
+      setState(() => _phase = _Phase.done);
+      _matchController.forward(from: 0);
+      return;
+    }
+
+    setState(() {
+      _roundIndex++;
+      _phase = _cameraController != null ? _Phase.detecting : _Phase.noCamera;
+    });
+
+    if (_cameraController != null) {
+      _faceService.startProcessing(_cameraController!);
+    }
+
+    _startRound();
+  }
+
+  // ── Face Detection ───────────────────────────────────────────────────────
+
   void _onDetectionResult(FaceDetectionResult result) {
-    if (!mounted || _state == _ScreenState.celebrating) return;
+    if (!mounted || _phase != _Phase.detecting) return;
 
     setState(() => _faceDetected = result.faceFound);
 
-    if (!result.faceFound) return;
-    _noFaceTimer?.cancel();
+    if (!result.faceFound) {
+      if (_feedbackText.isNotEmpty) setState(() => _feedbackText = '');
+      return;
+    }
 
-    // Check if detected emotion matches target
-    final matches = _emotionMatches(result.emotion, _targetEmotion);
-    if (matches) _onCorrectExpression();
+    // Hanya evaluasi emosi yang bisa dideteksi ML Kit.
+    if (!_currentTarget.mlKitDetectable) return;
+
+    final matches = _emotionMatches(result.emotion, _currentTarget.emotion);
+    if (matches) {
+      _onExpressionMatched();
+    } else {
+      setState(() => _feedbackText = _currentTarget.feedbackTrying);
+    }
   }
 
   bool _emotionMatches(DetectedEmotion detected, Emotion target) {
@@ -124,79 +391,50 @@ class _ExpressionMirroringScreenState
     }
   }
 
-  Future<void> _onCorrectExpression() async {
-    // Guard against re-entry from rapid stream events before the state flip
-    // propagates. Set celebrating synchronously before any async gap.
-    if (_state == _ScreenState.celebrating) return;
-    _state = _ScreenState.celebrating;
-    _faceService.stopProcessing();
-    setState(() {});
+  // ── Exit Dialog ──────────────────────────────────────────────────────────
 
-    // Capture providers before async gaps
-    final progressProvider = context.read<ProgressProvider>();
-    final audioService = context.read<AudioService>();
-
-    await progressProvider.recordSession(
-      gameId: GameProgress.gameExpressionMirroring,
-      wasCorrect: true,
-    );
-    audioService.play(AudioAsset.correct);
-
-    if (!mounted) return;
-    await showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      pageBuilder: (_, __, ___) => CelebrationWidget(
-        message: 'Bagus sekali! 🎉',
-        onDismiss: () {
-          Navigator.of(context).pop();
-          if (_round >= _totalRounds) {
-            context.go('/home');
-          } else {
-            setState(() {
-              _round++;
-              _targetEmotion =
-                  mirroringEmotions[(_round - 1) % mirroringEmotions.length];
-              _state = _ScreenState.detecting;
-              _faceDetected = false;
-            });
-            _faceService.startProcessing(_cameraController!);
-            _startNoFaceTimer();
-          }
-        },
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _noFaceTimer?.cancel();
-    _detectionSub?.cancel();
-    _faceService.dispose();
-    _cameraController?.dispose();
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    super.dispose();
-  }
-
-  Future<bool> _onWillPop() async {
-    final exit = await showDialog<bool>(
+  Future<bool> _confirmExit() async {
+    final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Selesai bermain?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Selesai bermain?',
+          style: GoogleFonts.baloo2(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: _textDark,
+          ),
+        ),
+        content: Text(
+          'Progresmu hari ini akan tersimpan kok!',
+          style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Lanjut'),
+            child: Text(
+              'Lanjut Bermain',
+              style: GoogleFonts.dmSans(color: _zoneColor),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya'),
+            child: Text(
+              'Ya, Keluar',
+              style: GoogleFonts.dmSans(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
-    return exit ?? false;
+    return result ?? false;
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -204,120 +442,664 @@ class _ExpressionMirroringScreenState
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) context.go('/home');
+        if (await _confirmExit() && context.mounted) context.pop();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFE3F2FD),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.blueGrey),
-            onPressed: () async {
-              if (await _onWillPop() && context.mounted) context.go('/home');
-            },
-          ),
-          title: Text(
-            'Ronde $_round / $_totalRounds',
-            style: const TextStyle(color: Colors.blueGrey),
-          ),
+        backgroundColor: _zoneBg,
+        body: SafeArea(
+          child: switch (_phase) {
+            _Phase.cameraInit => _buildInitializing(),
+            _Phase.detecting => _buildGameScreen(),
+            _Phase.matched => _buildMatchedScreen(),
+            _Phase.noCamera => _buildNoCameraScreen(),
+            _Phase.done => _buildDoneScreen(),
+          },
         ),
-        body: _buildBody(),
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_state == _ScreenState.selfReport) return _buildSelfReportMode();
-    if (_state == _ScreenState.cameraInit) {
-      return const _CameraLoadingState();
-    }
-    return _buildCameraMode();
-  }
+  // ── Camera Initializing ───────────────────────────────────────────────────
 
-  Widget _buildCameraMode() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+  Widget _buildInitializing() {
+    return Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Target emotion instruction
-          Text(
-            'Tunjukkan ekspresi: ${_targetEmotion.labelId}',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.blueGrey,
+          AnimatedBuilder(
+            animation: _raccooFloatAnimation,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(0, _raccooFloatAnimation.value),
+              child: child,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-
-          // Target emotion illustration
-          // TODO: Image.asset(_targetEmotion.characterAsset)
-          const Icon(Icons.face, size: 100, color: Colors.blue),
-          const SizedBox(height: 16),
-
-          // Camera preview
-          Expanded(
-            child: _cameraController != null &&
-                    _cameraController!.value.isInitialized
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: CameraPreview(_cameraController!),
-                  )
-                : const Center(child: CircularProgressIndicator()),
-          ),
-
-          // No-face prompt
-          if (!_faceDetected) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(12),
+                color: _zoneColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
-              child: const Text(
-                '📷 Tampakkan wajahmu!',
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+              child:
+                  const Icon(Icons.camera_front_rounded, size: 60, color: _zoneColor),
             ),
-          ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Menyiapkan kamera...',
+            style: GoogleFonts.baloo2(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _textDark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tunggu sebentar ya! 📷',
+            style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
+          ),
+          const SizedBox(height: 24),
+          const CircularProgressIndicator(color: _zoneColor),
         ],
       ),
     );
   }
 
-  Widget _buildSelfReportMode() {
+  // ── Main Game Screen (Camera Mode) ────────────────────────────────────────
+
+  Widget _buildGameScreen() {
+    return Column(
+      children: [
+        _buildTopBar(),
+        _buildTargetPanel(),
+        const Divider(height: 1, color: Color(0xFFD0E8F5)),
+        Expanded(child: _buildCameraPanel()),
+      ],
+    );
+  }
+
+  // ── No Camera Screen (Fallback) ───────────────────────────────────────────
+
+  Widget _buildNoCameraScreen() {
+    return Column(
+      children: [
+        _buildTopBar(),
+        _buildTargetPanel(),
+        const Divider(height: 1, color: Color(0xFFD0E8F5)),
+        Expanded(child: _buildFallbackPanel()),
+      ],
+    );
+  }
+
+  // ── Matched Screen ────────────────────────────────────────────────────────
+
+  Widget _buildMatchedScreen() {
+    return Column(
+      children: [
+        _buildTopBar(),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: ScaleTransition(
+                scale: _matchScaleAnimation,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Confetti icon
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: _successGreen.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _currentTarget.icon,
+                        size: 90,
+                        color: _successGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '⭐ Berhasil!',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: _zoneShadow,
+                            offset: Offset(3, 5),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _feedbackText,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.baloo2(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: _textDark,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _MirrorButton(
+                      label: _roundIndex < _targets.length - 1
+                          ? 'Lanjut →'
+                          : 'Selesai! 🎉',
+                      color: _roundIndex < _targets.length - 1
+                          ? _zoneColor
+                          : _successGreen,
+                      onTap: _nextRound,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Done Screen ───────────────────────────────────────────────────────────
+
+  Widget _buildDoneScreen() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.camera_alt_outlined, size: 80, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text(
-            'Kamera tidak tersedia.\nTunjukkan ekspresimu, lalu tekan tombol!',
-            style: TextStyle(fontSize: 18, color: Colors.blueGrey),
-            textAlign: TextAlign.center,
+          AnimatedBuilder(
+            animation: _raccooFloatAnimation,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(0, _raccooFloatAnimation.value),
+              child: child,
+            ),
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                color: _zoneColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.sentiment_very_satisfied_rounded,
+                size: 120,
+                color: _zoneColor,
+              ),
+            ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
           Text(
-            'Ekspresi: ${_targetEmotion.labelId}',
-            style: const TextStyle(
-                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue),
+            'Kamu Juara! 🏆',
+            style: GoogleFonts.baloo2(
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              color: _textDark,
+              height: 1.1,
+            ),
           ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => _onCorrectExpression(),
-            icon: const Icon(Icons.check_circle, size: 32),
-            label: const Text('Sudah! ✓', style: TextStyle(fontSize: 20)),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(200, 64),
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+          const SizedBox(height: 8),
+          Text(
+            'Kamu sudah berhasil meniru\n semua ${_targets.length} ekspresi Raccoo!',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.baloo2(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: _textMuted,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Stars
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              3,
+              (i) => TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: Duration(milliseconds: 400 + i * 180),
+                curve: const Cubic(0.34, 1.56, 0.64, 1),
+                builder: (context, v, _) => Transform.scale(
+                  scale: v,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(
+                      Icons.star_rounded,
+                      size: 52,
+                      color: Color(0xFFFFD54F),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Emotion chips recap
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: _targets.map((t) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _zoneColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: _zoneColor.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(t.icon, size: 18, color: _zoneColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      t.emotion.labelId,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          const Spacer(),
+          _MirrorButton(
+            label: 'Kembali ke Beranda',
+            color: _zoneColor,
+            onTap: () => context.pop(),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ── Sub-builders ──────────────────────────────────────────────────────────
+
+  /// Top bar: tombol kembali + progress ronde.
+  Widget _buildTopBar() {
+    final isDone = _phase == _Phase.done;
+    final currentRound = isDone ? _targets.length : _roundIndex + 1;
+    final totalRounds = _targets.length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        children: [
+          // Tombol kembali
+          GestureDetector(
+            onTap: () async {
+              final shouldExit = await _confirmExit();
+              if (shouldExit && mounted) context.pop();
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: _zoneShadow,
+                    offset: Offset(2, 3),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: _textDark,
+                size: 20,
+              ),
+            ),
+          ),
+          const Spacer(),
+          // Progress bar ronde
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Ronde $currentRound / $totalRounds',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _textMuted,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: 120,
+                height: 6,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: currentRound / totalRounds,
+                    backgroundColor:
+                        _zoneColor.withValues(alpha: 0.2),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(_zoneColor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Panel atas: ilustrasi Raccoo + instruksi + tip.
+  Widget _buildTargetPanel() {
+    final target = _currentTarget;
+
+    return Container(
+      color: _zoneBg,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      child: Column(
+        children: [
+          // Raccoo illustration + emotion name badge
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Raccoo animated icon
+              AnimatedBuilder(
+                animation: _raccooFloatAnimation,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(0, _raccooFloatAnimation.value * 0.5),
+                  child: child,
+                ),
+                child: ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: _zoneColor.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _zoneColor.withValues(alpha: 0.4),
+                        width: 2.5,
+                      ),
+                    ),
+                    child: Icon(
+                      target.icon,
+                      size: 56,
+                      color: _zoneColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Instruction + tip
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Emotion target badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _zoneColor,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        target.emotion.labelId.toUpperCase(),
+                        style: GoogleFonts.baloo2(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      target.instruction,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: _textDark,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Raccoo speech bubble tip
+          _RaccooTipBubble(tip: target.raccooTip),
+        ],
+      ),
+    );
+  }
+
+  /// Panel kamera: preview + overlay deteksi.
+  Widget _buildCameraPanel() {
+    final controller = _cameraController;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        children: [
+          // Camera preview
+          Expanded(
+            child: Stack(
+              children: [
+                // Camera frame container
+                _CameraFrame(
+                  controller: controller,
+                  faceDetected: _faceDetected,
+                ),
+
+                // "Tampakkan wajahmu!" overlay saat tidak ada wajah
+                if (!_faceDetected)
+                  const Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 16,
+                    child: Center(
+                      child: _NoFaceBanner(),
+                    ),
+                  ),
+
+                // Feedback text saat wajah terdeteksi tapi belum cocok
+                if (_faceDetected && _feedbackText.isNotEmpty)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                    child: _FeedbackOverlay(text: _feedbackText),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Self-report button — muncul setelah _selfReportDelay
+          // untuk emosi yang tidak bisa dideteksi ML Kit
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _selfReportVisible && !_currentTarget.mlKitDetectable
+                ? _MirrorButton(
+                    key: const ValueKey('selfReport'),
+                    label: 'Sudah Coba! 👍',
+                    color: _successGreen,
+                    onTap: () {
+                      setState(
+                          () => _feedbackText = _currentTarget.feedbackMatch);
+                      _onExpressionMatched();
+                    },
+                  )
+                : _currentTarget.mlKitDetectable
+                    ? Text(
+                        key: const ValueKey('hint_ml'),
+                        'Kamera mendeteksi ekspresimu otomatis!',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: _textMuted,
+                        ),
+                      )
+                    : Text(
+                        key: const ValueKey('hint_wait'),
+                        'Coba tirukan dulu, tombol akan muncul sebentar lagi...',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: _textMuted,
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Panel fallback: panduan animasi tanpa kamera.
+  Widget _buildFallbackPanel() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        children: [
+          // Info kamera tidak tersedia
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.orange.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Kamera tidak tersedia — mode panduan aktif',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Mirror simulation frame — tunjukkan emoji guide
+          Expanded(
+            child: _MirrorSimulation(target: _currentTarget),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Self-report button
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _selfReportVisible
+                ? _MirrorButton(
+                    key: const ValueKey('selfReport_fb'),
+                    label: 'Sudah Mencoba! 👍',
+                    color: _successGreen,
+                    onTap: () {
+                      setState(
+                          () => _feedbackText = _currentTarget.feedbackMatch);
+                      _onExpressionMatched();
+                    },
+                  )
+                : Text(
+                    key: const ValueKey('hint_fb'),
+                    'Ikuti panduan di atas, tombol akan muncul sebentar lagi...',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: _textMuted,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Sub-widgets ──────────────────────────────────────────────────────────────
+
+/// Bubble tip Raccoo — panel instruksi singkat.
+class _RaccooTipBubble extends StatelessWidget {
+  final String tip;
+  const _RaccooTipBubble({required this.tip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: _zoneShadow,
+            offset: Offset(3, 4),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.sentiment_satisfied_alt_rounded,
+            size: 18,
+            color: _zoneColor,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              tip,
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: _textDark,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -326,31 +1108,426 @@ class _ExpressionMirroringScreenState
   }
 }
 
-class _CameraLoadingState extends StatelessWidget {
-  const _CameraLoadingState();
+/// Container kamera dengan border yang berubah warna saat wajah terdeteksi.
+class _CameraFrame extends StatelessWidget {
+  final CameraController? controller;
+  final bool faceDetected;
+
+  const _CameraFrame({
+    required this.controller,
+    required this.faceDetected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(
-            'Menyiapkan kamera...',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.blueGrey,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Tunggu sebentar ya.',
-            style: TextStyle(color: Colors.blueGrey),
+    final borderColor =
+        faceDetected ? _successGreen : _zoneColor.withValues(alpha: 0.4);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: (faceDetected ? _successGreen : _zoneShadow)
+                .withValues(alpha: 0.35),
+            offset: const Offset(4, 6),
+            blurRadius: 0,
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(21),
+        child: controller != null && controller!.value.isInitialized
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  CameraPreview(controller!),
+                  // Scan guide overlay (wajah outline)
+                  if (!faceDetected) const _ScanGuideOverlay(),
+                  // Face detected indicator
+                  if (faceDetected)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _successGreen.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.face_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Wajah terdeteksi!',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              )
+            : Container(
+                color: const Color(0xFF1A1A2E),
+                child: const Center(
+                  child: CircularProgressIndicator(color: _zoneColor),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+/// Overlay panduan mengarahkan wajah ke kamera — ditampilkan saat belum ada wajah.
+class _ScanGuideOverlay extends StatelessWidget {
+  const _ScanGuideOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: CustomPaint(
+        size: const Size(160, 200),
+        painter: _FaceOvalPainter(),
+      ),
+    );
+  }
+}
+
+/// Gambar oval putus-putus sebagai panduan posisi wajah.
+class _FaceOvalPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    // Dash pattern manual
+    final rect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height / 2),
+      width: size.width,
+      height: size.height,
+    );
+    final path = Path()..addOval(rect);
+
+    const dashLength = 12.0;
+    const gapLength = 6.0;
+    final metrics = path.computeMetrics().first;
+    double distance = 0;
+
+    while (distance < metrics.length) {
+      final nextDash = distance + dashLength;
+      canvas.drawPath(
+        metrics.extractPath(distance, nextDash.clamp(0, metrics.length)),
+        paint,
+      );
+      distance = nextDash + gapLength;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Banner "Tampakkan wajahmu!" saat tidak ada wajah di frame.
+class _NoFaceBanner extends StatelessWidget {
+  const _NoFaceBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.face_retouching_natural_rounded,
+              size: 18, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            'Tampakkan wajahmu ke kamera! 📷',
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Overlay feedback di atas kamera saat wajah terdeteksi tapi belum cocok.
+class _FeedbackOverlay extends StatelessWidget {
+  final String text;
+  const _FeedbackOverlay({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: _zoneColor.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.dmSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+          height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+/// Simulasi cermin untuk mode fallback (tanpa kamera).
+///
+/// Menampilkan:
+/// 1. Frame "cermin" dengan guide emoji animasi
+/// 2. Langkah-langkah cara membuat ekspresi target
+class _MirrorSimulation extends StatefulWidget {
+  final _MirrorTarget target;
+  const _MirrorSimulation({required this.target});
+
+  @override
+  State<_MirrorSimulation> createState() => _MirrorSimulationState();
+}
+
+class _MirrorSimulationState extends State<_MirrorSimulation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 0.92, end: 1.08).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_MirrorSimulation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset animation saat target berubah
+    if (oldWidget.target.emotion != widget.target.emotion) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Cermin simulasi
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A2035),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: _zoneColor.withValues(alpha: 0.5),
+                width: 3,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: _zoneShadow,
+                  offset: Offset(4, 6),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Cermin label
+                Positioned(
+                  top: 12,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '🪞 Cermin Panduan',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: Colors.white60,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Guide emoji animasi
+                Center(
+                  child: ScaleTransition(
+                    scale: _scale,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.target.icon,
+                          size: 100,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            widget.target.emotion.labelId.toUpperCase(),
+                            style: GoogleFonts.baloo2(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Oval guide
+                Center(
+                  child: CustomPaint(
+                    size: const Size(140, 180),
+                    painter: _FaceOvalPainter(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Tip cara membuat ekspresi
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: _zoneShadow,
+                offset: Offset(3, 4),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.lightbulb_outline_rounded,
+                size: 18,
+                color: Color(0xFFFFD54F),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.target.raccooTip,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: _textDark,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Tombol aksi utama Mirror — warna bisa disesuaikan per konteks.
+class _MirrorButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MirrorButton({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 64,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.55),
+              offset: const Offset(4, 6),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: GoogleFonts.baloo2(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }

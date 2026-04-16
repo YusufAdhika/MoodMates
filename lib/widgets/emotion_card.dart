@@ -106,10 +106,12 @@ class EmotionCard extends StatelessWidget {
         return AudioAsset.emotionSad;
       case Emotion.angry:
         return AudioAsset.emotionAngry;
-      case Emotion.surprised:
-        return AudioAsset.emotionSurprised;
       case Emotion.scared:
         return AudioAsset.emotionScared;
+      case Emotion.surprised:
+        return AudioAsset.emotionSurprised;
+      case Emotion.disgust:
+        return AudioAsset.emotionDisgust;
       case Emotion.neutral:
         return AudioAsset.emotionHappy; // fallback
     }
@@ -123,10 +125,12 @@ class EmotionCard extends StatelessWidget {
         return Icons.sentiment_very_dissatisfied;
       case Emotion.angry:
         return Icons.sentiment_dissatisfied;
-      case Emotion.surprised:
-        return Icons.sentiment_neutral;
       case Emotion.scared:
         return Icons.sentiment_very_dissatisfied;
+      case Emotion.surprised:
+        return Icons.sentiment_neutral;
+      case Emotion.disgust:
+        return Icons.mood_bad_rounded;
       case Emotion.neutral:
         return Icons.sentiment_neutral;
     }
@@ -140,10 +144,12 @@ class EmotionCard extends StatelessWidget {
         return const Color(0xFF4BA3C3);
       case Emotion.angry:
         return const Color(0xFFE53935);
-      case Emotion.surprised:
-        return const Color(0xFFFFC247);
       case Emotion.scared:
         return const Color(0xFF7E57C2);
+      case Emotion.surprised:
+        return const Color(0xFFFFC247);
+      case Emotion.disgust:
+        return const Color(0xFF7CB342);
       case Emotion.neutral:
         return const Color(0xFF8D6E63);
     }
@@ -157,10 +163,12 @@ class EmotionCard extends StatelessWidget {
         return const Color(0xFF1464A0);
       case Emotion.angry:
         return const Color(0xFF9F1E1B);
-      case Emotion.surprised:
-        return const Color(0xFFC49000);
       case Emotion.scared:
         return const Color(0xFF4D2A80);
+      case Emotion.surprised:
+        return const Color(0xFFC49000);
+      case Emotion.disgust:
+        return const Color(0xFF33691E);
       case Emotion.neutral:
         return const Color(0xFF5D4037);
     }

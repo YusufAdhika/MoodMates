@@ -18,6 +18,217 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class _GameCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final Color shadowColor;
+  final VoidCallback onTap;
+  final bool compact;
+
+  const _GameCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.shadowColor,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isUltraCompact = constraints.maxHeight < 150;
+          final isTightHeight =
+              isUltraCompact || compact || constraints.maxHeight < 190;
+          final iconBoxSize = isUltraCompact
+              ? 48.0
+              : isTightHeight
+                  ? 68.0
+                  : 96.0;
+          final iconSize = isUltraCompact
+              ? 28.0
+              : isTightHeight
+                  ? 38.0
+                  : 56.0;
+          final titleSize = isUltraCompact
+              ? 20.0
+              : isTightHeight
+                  ? 24.0
+                  : 30.0;
+          final subtitleSize = isUltraCompact
+              ? 11.0
+              : isTightHeight
+                  ? 13.0
+                  : 15.0;
+          final buttonSize = isUltraCompact
+              ? 12.0
+              : isTightHeight
+                  ? 14.0
+                  : 16.0;
+          final cardPadding = isUltraCompact
+              ? 14.0
+              : isTightHeight
+                  ? 18.0
+                  : 28.0;
+          final cardRadius = isTightHeight ? 20.0 : 24.0;
+          final iconRadius = isUltraCompact
+              ? 14.0
+              : isTightHeight
+                  ? 18.0
+                  : 24.0;
+          final spaceLg = isTightHeight ? 12.0 : 20.0;
+          final spaceSm = isTightHeight ? 6.0 : 8.0;
+
+          Widget content;
+          if (isUltraCompact) {
+            content = Row(
+              children: [
+                Container(
+                  width: iconBoxSize,
+                  height: iconBoxSize,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(iconRadius),
+                  ),
+                  child: Icon(icon, size: iconSize, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.baloo2(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle.replaceAll('\n', ' '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.dmSans(
+                          fontSize: subtitleSize,
+                          height: 1.2,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Main',
+                    style: GoogleFonts.baloo2(
+                      fontSize: buttonSize,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            content = Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Container(
+                //   width: iconBoxSize,
+                //   height: iconBoxSize,
+                //   decoration: BoxDecoration(
+                //     color: Colors.white.withValues(alpha: 0.25),
+                //     borderRadius: BorderRadius.circular(iconRadius),
+                //   ),
+                //   child: Icon(icon, size: iconSize, color: Colors.white),
+                // ),
+                // SizedBox(height: spaceLg),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    height: 1.1,
+                  ),
+                ),
+                SizedBox(height: spaceSm),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.dmSans(
+                    fontSize: subtitleSize,
+                    height: 1.35,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
+                ),
+                SizedBox(height: spaceLg),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTightHeight ? 16 : 20,
+                    vertical: isTightHeight ? 8 : 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Main Sekarang →',
+                    style: GoogleFonts.baloo2(
+                      fontSize: buttonSize,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(cardRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor.withValues(alpha: 0.7),
+                  offset: const Offset(5, 8),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(cardPadding),
+            child: content,
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
@@ -57,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Ayo pilih permainan hari ini.',
+                    'Fitur permainan lama sudah dihapus dan siap dibuat ulang.',
                     style: TextStyle(
                       fontSize: 15,
                       color: Color(0xFF8D6E63),
@@ -67,36 +278,59 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ── Game Cards ───────────────────────────────────────────────
+            // ── Game Menu ────────────────────────────────────────────────
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                children: [
-                  _GameCard(
-                    label: 'Kenali Emosi',
-                    subtitle: 'Tebak perasaan dari wajah',
-                    zoneColor: const Color(0xFFFF9A3C),
-                    shadowColor: const Color(0xFFC85A00),
-                    iconData: Icons.face_rounded,
-                    onTap: () => context.push('/emotion-recognition'),
-                  ),
-                  _GameCard(
-                    label: 'Tiru Ekspresi',
-                    subtitle: 'Tunjukkan ekspresimu!',
-                    zoneColor: const Color(0xFF4BA3C3),
-                    shadowColor: const Color(0xFF1464A0),
-                    iconData: Icons.camera_front_rounded,
-                    onTap: () => context.push('/expression-mirroring'),
-                  ),
-                  _GameCard(
-                    label: 'Situasi Sosial',
-                    subtitle: 'Pilih perasaan yang cocok',
-                    zoneColor: const Color(0xFF4CAF6E),
-                    shadowColor: const Color(0xFF14824A),
-                    iconData: Icons.groups_rounded,
-                    onTap: () => context.push('/social-situations'),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final availableHeight = constraints.maxHeight;
+                  final spacing = availableHeight < 620 ? 12.0 : 16.0;
+                  final compactCards = availableHeight < 620;
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _GameCard(
+                            title: 'Raccoo Feel Cards',
+                            subtitle: 'Kenalan sama 6 perasaan\nbareng Raccoo!',
+                            icon: Icons.style_rounded,
+                            color: const Color(0xFFFF9A3C),
+                            shadowColor: const Color(0xFFC85A00),
+                            compact: compactCards,
+                            onTap: () => context.push('/feel-cards'),
+                          ),
+                        ),
+                        SizedBox(height: spacing),
+                        Expanded(
+                          child: _GameCard(
+                            title: 'Raccoo Mirror',
+                            subtitle:
+                                'Tirukan ekspresi wajah\nRaccoo di depan kamera!',
+                            icon: Icons.camera_front_rounded,
+                            color: const Color(0xFF4BA3C3),
+                            shadowColor: const Color(0xFF1464A0),
+                            compact: compactCards,
+                            onTap: () => context.push('/mirror'),
+                          ),
+                        ),
+                        SizedBox(height: spacing),
+                        Expanded(
+                          child: _GameCard(
+                            title: 'Raccoo Think',
+                            subtitle:
+                                'Latih respons sosial\ndalam situasi sehari-hari!',
+                            icon: Icons.forum_rounded,
+                            color: const Color(0xFF4CAF6E),
+                            shadowColor: const Color(0xFF1A5E36),
+                            compact: compactCards,
+                            onTap: () => context.push('/think'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
 
@@ -132,104 +366,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GameCard extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final Color zoneColor;
-  final Color shadowColor;
-  final IconData iconData;
-  final VoidCallback onTap;
-
-  const _GameCard({
-    required this.label,
-    required this.subtitle,
-    required this.zoneColor,
-    required this.shadowColor,
-    required this.iconData,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      // Bottom offset space so the hard shadow doesn't clip
-      padding: const EdgeInsets.only(bottom: 20),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          // Hard colored offset shadow — DESIGN.md risk #1
-          decoration: BoxDecoration(
-            color: shadowColor,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          // The shadow offset is achieved by translating the card up/left
-          // so only the shadow container peeks out on the bottom-right.
-          child: Transform.translate(
-            offset: const Offset(-5, -7),
-            child: Container(
-              height: 110,
-              decoration: BoxDecoration(
-                color: zoneColor,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  // Icon circle
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(iconData, size: 36, color: Colors.white),
-                  ),
-                  const SizedBox(width: 16),
-
-                  // Text
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          label,
-                          style: GoogleFonts.baloo2(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Arrow
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withValues(alpha: 0.7),
-                    size: 18,
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
