@@ -37,6 +37,9 @@ dependencies:
   # Lottie character animations
   lottie: ^3.1.2
 
+  # Video playback (Raccoo emotion animations)
+  video_player: ^2.9.2
+
   # PIN hashing
   crypto: ^3.0.3
 
@@ -64,3 +67,5 @@ flutter:
     - assets/audio/praise/
     # Correct/incorrect sound effects
     - assets/audio/sfx/
+    # Raccoo emotion video animations
+    - assets/video/

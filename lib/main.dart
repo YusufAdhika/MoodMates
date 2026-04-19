@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'providers/progress_provider.dart';
 import 'screens/expression_mirroring/expression_mirroring_screen.dart';
 import 'screens/social_situations/social_situations_screen.dart';
+import 'screens/feel_cards/feel_cards_design_system_screen.dart';
 import 'screens/feel_cards/feel_cards_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
@@ -93,6 +94,10 @@ GoRouter _buildRouter(ProgressProvider progressProvider) {
       GoRoute(
         path: '/feel-cards',
         builder: (_, __) => const FeelCardsScreen(),
+      ),
+      GoRoute(
+        path: '/feel-cards-design',
+        builder: (_, __) => const FeelCardsDesignSystemScreen(),
       ),
       GoRoute(
         path: '/parent-pin',

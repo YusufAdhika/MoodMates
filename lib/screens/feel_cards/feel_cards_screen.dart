@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../models/emotion.dart';
 import '../../models/game_progress.dart';
@@ -22,6 +23,7 @@ class _EmotionCardData {
   final String raccooSpeech;
   final String whenExamples;
   final AudioAsset? audioAsset;
+  final String? videoPath;
 
   const _EmotionCardData({
     required this.emotion,
@@ -33,6 +35,7 @@ class _EmotionCardData {
     required this.raccooSpeech,
     required this.whenExamples,
     this.audioAsset,
+    this.videoPath,
   });
 }
 
@@ -48,6 +51,7 @@ const List<_EmotionCardData> _cards = [
         'Ini namanya SENANG!\nRasanya hangat di dada dan mau loncat-loncat terus.\nRaccoo suka banget kalau lagi senang!',
     whenExamples: 'Dapat hadiah · Main bareng teman · Makan es krim',
     audioAsset: AudioAsset.emotionHappy,
+    videoPath: 'assets/video/raccoo_happy.mp4',
   ),
   _EmotionCardData(
     emotion: Emotion.sad,
@@ -60,6 +64,7 @@ const List<_EmotionCardData> _cards = [
         'Ini namanya SEDIH.\nRasanya dada jadi berat dan mata mau nangis.\nTidak apa-apa lho kalau kamu nangis!',
     whenExamples: 'Balon terbang pergi · Teman pulang duluan · Mainan rusak',
     audioAsset: AudioAsset.emotionSad,
+    videoPath: 'assets/video/raccoo_sad.mp4',
   ),
   _EmotionCardData(
     emotion: Emotion.angry,
@@ -72,6 +77,7 @@ const List<_EmotionCardData> _cards = [
         'Ini namanya MARAH.\nRasanya panas di dalam dan ingin berteriak.\nRaccoo juga pernah marah kok!',
     whenExamples: 'Mainan diambil · Tidak didengarkan · Antrian diserobot',
     audioAsset: AudioAsset.emotionAngry,
+    videoPath: 'assets/video/raccoo_angry.mp4.mp4',
   ),
   _EmotionCardData(
     emotion: Emotion.scared,
@@ -84,6 +90,7 @@ const List<_EmotionCardData> _cards = [
         'Ini namanya TAKUT.\nRasanya jantung dag dig dug dan badan gemetar.\nSemua orang pernah takut, termasuk Raccoo!',
     whenExamples: 'Suara petir · Gelap sendiri · Hewan besar yang baru dikenal',
     audioAsset: AudioAsset.emotionScared,
+    videoPath: 'assets/video/raccoo_scare.mp4',
   ),
   _EmotionCardData(
     emotion: Emotion.surprised,
@@ -96,6 +103,7 @@ const List<_EmotionCardData> _cards = [
         'Ini namanya TERKEJUT.\nRasanya tiba-tiba — HAH! Mata langsung membelalak.\nBisa terkejut yang senang, bisa juga yang kaget!',
     whenExamples: 'Teman mengagetkan · Dapat kejutan · Lihat sesuatu tak terduga',
     audioAsset: AudioAsset.emotionSurprised,
+    videoPath: 'assets/video/raccoo_shock.mp4',
   ),
   _EmotionCardData(
     emotion: Emotion.disgust,
@@ -108,6 +116,7 @@ const List<_EmotionCardData> _cards = [
         'Ini namanya JIJIK.\nRasanya hidung berkerut dan perut tidak enak.\nRaccoo paling jijik sama makanan berjamur, hiii!',
     whenExamples: 'Bau tidak sedap · Makanan busuk · Sesuatu yang kotor',
     audioAsset: AudioAsset.emotionDisgust,
+    videoPath: 'assets/video/raccoo_disgust.mp4',
   ),
 ];
 
@@ -810,7 +819,7 @@ class _CardFront extends StatelessWidget {
 
 // ─── Card Back (terbuka) ──────────────────────────────────────────────────────
 
-class _CardBack extends StatelessWidget {
+class _CardBack extends StatefulWidget {
   final _EmotionCardData card;
   final VoidCallback onReplayAudio;
   final Animation<double> flipAnimation;
@@ -822,18 +831,61 @@ class _CardBack extends StatelessWidget {
   });
 
   @override
+  State<_CardBack> createState() => _CardBackState();
+}
+
+class _CardBackState extends State<_CardBack> {
+  VideoPlayerController? _videoController;
+  bool _videoReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  @override
+  void didUpdateWidget(_CardBack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.card.videoPath != widget.card.videoPath) {
+      _videoController?.dispose();
+      _videoController = null;
+      _videoReady = false;
+      _initVideo();
+    }
+  }
+
+  Future<void> _initVideo() async {
+    final path = widget.card.videoPath;
+    if (path == null) return;
+    final controller = VideoPlayerController.asset(path);
+    _videoController = controller;
+    await controller.initialize();
+    controller.setLooping(true);
+    controller.setVolume(0);
+    controller.play();
+    if (mounted) setState(() => _videoReady = true);
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: flipAnimation,
+      animation: widget.flipAnimation,
       builder: (context, child) {
-        final angle = (flipAnimation.value - 1) * math.pi / 2;
+        final angle = (widget.flipAnimation.value - 1) * math.pi / 2;
         return Transform(
           alignment: Alignment.center,
           transform: Matrix4.identity()
             ..setEntry(3, 2, 0.001)
             ..rotateY(angle),
           child: Opacity(
-            opacity: ((flipAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
+            opacity: ((widget.flipAnimation.value - 0.5) * 2).clamp(0.0, 1.0),
             child: child,
           ),
         );
@@ -841,11 +893,11 @@ class _CardBack extends StatelessWidget {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: card.cardColor,
+          color: widget.card.cardColor,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: card.shadowColor.withValues(alpha: 0.45),
+              color: widget.card.shadowColor.withValues(alpha: 0.45),
               offset: const Offset(5, 8),
               blurRadius: 0,
             ),
@@ -855,19 +907,27 @@ class _CardBack extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              // Emotion icon
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.55),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  card.icon,
-                  size: 76,
-                  color: card.shadowColor,
-                ),
+              // Raccoo video or fallback icon
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: _videoReady && _videoController != null
+                    ? AspectRatio(
+                        aspectRatio: _videoController!.value.aspectRatio,
+                        child: VideoPlayer(_videoController!),
+                      )
+                    : Container(
+                        width: double.infinity,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(
+                          widget.card.icon,
+                          size: 96,
+                          color: widget.card.shadowColor,
+                        ),
+                      ),
               ),
 
               const SizedBox(height: 16),
@@ -886,12 +946,12 @@ class _CardBack extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      card.emoji,
+                      widget.card.emoji,
                       style: const TextStyle(fontSize: 24),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      card.emotion.labelId.toUpperCase(),
+                      widget.card.emotion.labelId.toUpperCase(),
                       style: GoogleFonts.baloo2(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
@@ -907,7 +967,7 @@ class _CardBack extends StatelessWidget {
 
               // Description
               Text(
-                card.description,
+                widget.card.description,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.baloo2(
                   fontSize: 18,
@@ -949,7 +1009,7 @@ class _CardBack extends StatelessWidget {
                         ),
                         const Spacer(),
                         GestureDetector(
-                          onTap: onReplayAudio,
+                          onTap: widget.onReplayAudio,
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
@@ -967,7 +1027,7 @@ class _CardBack extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      card.raccooSpeech,
+                      widget.card.raccooSpeech,
                       style: GoogleFonts.dmSans(
                         fontSize: 16,
                         height: 1.6,
@@ -998,7 +1058,7 @@ class _CardBack extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        card.whenExamples,
+                        widget.card.whenExamples,
                         style: GoogleFonts.dmSans(
                           fontSize: 16,
                           color: const Color(0xFF5D4037),

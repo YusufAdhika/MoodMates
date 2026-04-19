@@ -6,7 +6,8 @@
       "Bash(flutter analyze:*)",
       "Bash(flutter test *)",
       "Read(//private/tmp/**)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(xxd '/Users/yusufadhikaa/Documents/Skirpsi 2026/moodmates/racoonn_think.md')"
     ]
   }
 }

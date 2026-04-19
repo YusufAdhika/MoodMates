@@ -274,6 +274,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Color(0xFF8D6E63),
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: () => context.push('/feel-cards-design'),
+                    icon: const Icon(Icons.palette_outlined, size: 18),
+                    label: const Text('Review design system Feel Cards'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFC85A00),
+                      backgroundColor: Colors.white.withValues(alpha: 0.6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
