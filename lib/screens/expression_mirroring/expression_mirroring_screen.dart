@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../models/emotion.dart';
 import '../../models/game_progress.dart';
@@ -46,8 +47,12 @@ class _MirrorTarget {
   /// Feedback sementara saat anak sedang mencoba (ML Kit mode).
   final String feedbackTrying;
 
-  /// Ikon placeholder hingga aset ilustrasi tersedia.
+
+  /// Ikon fallback saat video belum siap.
   final IconData icon;
+
+  /// Path video Raccoo untuk mode fallback (tanpa kamera).
+  final String? videoPath;
 
   const _MirrorTarget({
     required this.emotion,
@@ -57,6 +62,7 @@ class _MirrorTarget {
     required this.feedbackMatch,
     required this.feedbackTrying,
     required this.icon,
+    this.videoPath,
   });
 }
 
@@ -70,6 +76,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Wah, wajah senangnya sudah cocok! Kamu hebat!',
     feedbackTrying: 'Hampir! Coba senyum lebih lebar...',
     icon: Icons.sentiment_very_satisfied_rounded,
+    videoPath: 'assets/video/raccoo_happy.mp4',
   ),
   _MirrorTarget(
     emotion: Emotion.sad,
@@ -79,6 +86,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Keren! Wajah sedihmu bagus sekali! Kamu pintar!',
     feedbackTrying: 'Ayo tunjukkan wajah sedih yang lebih dalam...',
     icon: Icons.sentiment_very_dissatisfied_rounded,
+    videoPath: 'assets/video/raccoo_sad.mp4',
   ),
   _MirrorTarget(
     emotion: Emotion.angry,
@@ -88,6 +96,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Kamu sudah berhasil! Wajah marahnya keren!',
     feedbackTrying: 'Kerutkan alismu lebih kuat, yuk!',
     icon: Icons.mood_bad_rounded,
+    videoPath: 'assets/video/raccoo_angry.mp4.mp4',
   ),
   _MirrorTarget(
     emotion: Emotion.scared,
@@ -97,6 +106,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Bagus banget! Wajah takutnya sudah pas!',
     feedbackTrying: 'Buka matamu lebih lebar lagi...',
     icon: Icons.sentiment_dissatisfied_rounded,
+    videoPath: 'assets/video/raccoo_scare.mp4',
   ),
   _MirrorTarget(
     emotion: Emotion.surprised,
@@ -106,6 +116,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Luar biasa! Wajah terkejutmu sudah cocok!',
     feedbackTrying: 'Buka mulutmu lebih lebar — HAH!',
     icon: Icons.sentiment_neutral_rounded,
+    videoPath: 'assets/video/raccoo_shock.mp4',
   ),
   _MirrorTarget(
     emotion: Emotion.disgust,
@@ -115,6 +126,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Berhasil! Wajah jijiknya sudah kelihatan!',
     feedbackTrying: 'Kerutkan hidungmu lebih kuat...',
     icon: Icons.sick_rounded,
+    videoPath: 'assets/video/raccoo_disgust.mp4',
   ),
 ];
 
@@ -446,14 +458,24 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
       },
       child: Scaffold(
         backgroundColor: _zoneBg,
-        body: SafeArea(
-          child: switch (_phase) {
-            _Phase.cameraInit => _buildInitializing(),
-            _Phase.detecting => _buildGameScreen(),
-            _Phase.matched => _buildMatchedScreen(),
-            _Phase.noCamera => _buildNoCameraScreen(),
-            _Phase.done => _buildDoneScreen(),
-          },
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/background/bg_racoo_mirror.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+            SafeArea(
+              child: switch (_phase) {
+                _Phase.cameraInit => _buildInitializing(),
+                _Phase.detecting => _buildGameScreen(),
+                _Phase.matched => _buildMatchedScreen(),
+                _Phase.noCamera => _buildNoCameraScreen(),
+                _Phase.done => _buildDoneScreen(),
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -511,7 +533,6 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
       children: [
         _buildTopBar(),
         _buildTargetPanel(),
-        const Divider(height: 1, color: Color(0xFFD0E8F5)),
         Expanded(child: _buildCameraPanel()),
       ],
     );
@@ -524,7 +545,6 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
       children: [
         _buildTopBar(),
         _buildTargetPanel(),
-        const Divider(height: 1, color: Color(0xFFD0E8F5)),
         Expanded(child: _buildFallbackPanel()),
       ],
     );
@@ -553,10 +573,12 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                         color: _successGreen.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        _currentTarget.icon,
-                        size: 90,
-                        color: _successGreen,
+                      child: _VideoCircle(
+                        size: 140,
+                        videoPath: _currentTarget.videoPath,
+                        fallbackIcon: _currentTarget.icon,
+                        fallbackColor: _successGreen,
+                        fallbackBg: _successGreen.withValues(alpha: 0.15),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -627,18 +649,12 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
               offset: Offset(0, _raccooFloatAnimation.value),
               child: child,
             ),
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                color: _zoneColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.sentiment_very_satisfied_rounded,
-                size: 120,
-                color: _zoneColor,
-              ),
+            child: _VideoCircle(
+              size: 180,
+              videoPath: 'assets/video/raccoo_happy.mp4',
+              fallbackIcon: Icons.sentiment_very_satisfied_rounded,
+              fallbackColor: _zoneColor,
+              fallbackBg: _zoneColor.withValues(alpha: 0.15),
             ),
           ),
           const SizedBox(height: 20),
@@ -754,56 +770,47 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
               final shouldExit = await _confirmExit();
               if (shouldExit && mounted) context.pop();
             },
-            child: Container(
+            child: Image.asset(
+              'assets/images/ui/ic_left.png',
               width: 64,
               height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: _zoneShadow,
-                    offset: Offset(2, 3),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.arrow_back_rounded,
-                color: _textDark,
-                size: 28,
-              ),
             ),
           ),
           const Spacer(),
           // Progress bar ronde
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'Ronde $currentRound / $totalRounds',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _textMuted,
-                ),
-              ),
-              const SizedBox(height: 4),
-              SizedBox(
-                width: 120,
-                height: 6,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: currentRound / totalRounds,
-                    backgroundColor:
-                        _zoneColor.withValues(alpha: 0.2),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(_zoneColor),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Ronde $currentRound / $totalRounds',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: 100,
+                  height: 6,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: currentRound / totalRounds,
+                      backgroundColor: Colors.white.withValues(alpha: 0.3),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(_zoneColor),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -815,7 +822,6 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
     final target = _currentTarget;
 
     return Container(
-      color: _zoneBg,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       child: Column(
         children: [
@@ -843,10 +849,12 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                         width: 2.5,
                       ),
                     ),
-                    child: Icon(
-                      target.icon,
-                      size: 56,
-                      color: _zoneColor,
+                    child: _VideoCircle(
+                      size: 90,
+                      videoPath: target.videoPath,
+                      fallbackIcon: target.icon,
+                      fallbackColor: _zoneColor,
+                      fallbackBg: _zoneColor.withValues(alpha: 0.18),
                     ),
                   ),
                 ),
@@ -962,13 +970,34 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                     },
                   )
                 : _currentTarget.mlKitDetectable
-                    ? Text(
+                    ? Container(
                         key: const ValueKey('hint_ml'),
-                        'Kamera mendeteksi ekspresimu otomatis!',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: _textMuted,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.camera_front_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Kamera mendeteksi ekspresimu otomatis!',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       )
                     : Text(
@@ -1338,7 +1367,6 @@ class _MirrorSimulationState extends State<_MirrorSimulation>
   @override
   void didUpdateWidget(_MirrorSimulation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Reset animation saat target berubah
     if (oldWidget.target.emotion != widget.target.emotion) {
       _controller.forward(from: 0);
     }
@@ -1398,17 +1426,19 @@ class _MirrorSimulationState extends State<_MirrorSimulation>
                   ),
                 ),
 
-                // Guide emoji animasi
+                // Guide video / icon animasi
                 Center(
                   child: ScaleTransition(
                     scale: _scale,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          widget.target.icon,
-                          size: 100,
-                          color: Colors.white.withValues(alpha: 0.85),
+                        _VideoCircle(
+                          size: 160,
+                          videoPath: widget.target.videoPath,
+                          fallbackIcon: widget.target.icon,
+                          fallbackColor: Colors.white.withValues(alpha: 0.85),
+                          fallbackBg: Colors.white.withValues(alpha: 0.12),
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -1432,6 +1462,7 @@ class _MirrorSimulationState extends State<_MirrorSimulation>
                     ),
                   ),
                 ),
+
 
                 // Oval guide
                 Center(
@@ -1529,6 +1560,119 @@ class _MirrorButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Circular video player with icon fallback.
+/// Manages its own [VideoPlayerController] lifecycle.
+class _VideoCircle extends StatefulWidget {
+  final double size;
+  final String? videoPath;
+  final IconData fallbackIcon;
+  final Color fallbackColor;
+  final Color fallbackBg;
+
+  const _VideoCircle({
+    required this.size,
+    required this.fallbackIcon,
+    required this.fallbackColor,
+    required this.fallbackBg,
+    this.videoPath,
+  });
+
+  @override
+  State<_VideoCircle> createState() => _VideoCircleState();
+}
+
+class _VideoCircleState extends State<_VideoCircle> {
+  VideoPlayerController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  @override
+  void didUpdateWidget(_VideoCircle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.videoPath != widget.videoPath) {
+      final old = _controller;
+      setState(() => _controller = null);
+      old?.dispose();
+      _initVideo();
+    }
+  }
+
+  Future<void> _initVideo() async {
+    final path = widget.videoPath;
+    if (path == null) return;
+    final controller = VideoPlayerController.asset(path);
+    if (mounted) setState(() => _controller = controller);
+    try {
+      await controller.initialize();
+      if (!mounted || _controller != controller) return;
+      controller.setLooping(true);
+      controller.setVolume(0);
+      await controller.play();
+    } catch (e) {
+      debugPrint('[VideoCircle] init failed: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.size;
+    final ctrl = _controller;
+    return ClipOval(
+      child: ctrl == null
+          ? Container(
+              width: s,
+              height: s,
+              color: widget.fallbackBg,
+              child: Icon(
+                widget.fallbackIcon,
+                size: s * 0.6,
+                color: widget.fallbackColor,
+              ),
+            )
+          : ValueListenableBuilder<VideoPlayerValue>(
+              valueListenable: ctrl,
+              builder: (context, value, _) {
+                if (!value.isInitialized) {
+                  return Container(
+                    width: s,
+                    height: s,
+                    color: widget.fallbackBg,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white54,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                }
+                return SizedBox(
+                  width: s,
+                  height: s,
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: value.size.width,
+                      height: value.size.height,
+                      child: VideoPlayer(ctrl),
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
