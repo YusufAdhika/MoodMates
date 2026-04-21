@@ -3,6 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 
+// ─── Green Design Tokens ──────────────────────────────────────────────────────
+const _brandGreen  = Color(0xFF4CAF6E);
+const _brandShadow = Color(0xFF2A7A48);
+const _bg          = Color(0xFFEDFFF3);
+const _textColor   = Color(0xFF1A3A2A);
+const _mutedText   = Color(0xFF557A65);
+
 /// PIN entry screen guarding access to the Parent Dashboard.
 ///
 /// If no PIN is set yet, the first entry sets the PIN.
@@ -52,14 +59,12 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
 
     if (_isSettingPin) {
       if (!_isConfirming) {
-        // First entry — save as confirmation PIN
         setState(() {
           _confirmPin = _enteredPin;
           _enteredPin = '';
           _isConfirming = true;
         });
       } else {
-        // Second entry — confirm match
         if (_enteredPin == _confirmPin) {
           await storage.setPin(_enteredPin);
           if (mounted) context.go('/parent-dashboard');
@@ -73,7 +78,6 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
         }
       }
     } else {
-      // Validate existing PIN
       if (storage.validatePin(_enteredPin)) {
         if (mounted) context.go('/parent-dashboard');
       } else {
@@ -85,7 +89,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
     }
   }
 
-  /// 5-tap easter egg on the title to reset a forgotten PIN.
+  /// 5-tap easter egg on the lock icon to reset a forgotten PIN.
   void _onTitleTap() {
     _titleTapCount++;
     if (_titleTapCount >= 5) {
@@ -103,11 +107,11 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: _mutedText),
             child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () async {
-              // Capture storage before async gap
               final storage = context.read<StorageService>();
               await storage.clearPin();
               if (!ctx.mounted) return;
@@ -120,6 +124,7 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
                 _errorMessage = '';
               });
             },
+            style: TextButton.styleFrom(foregroundColor: _brandGreen),
             child: const Text('Ya, reset'),
           ),
         ],
@@ -142,12 +147,12 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E7),
+      backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.brown),
+          icon: const Icon(Icons.arrow_back, color: _brandShadow),
           onPressed: () => context.go('/home'),
         ),
       ),
@@ -158,15 +163,28 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
             // 5-tap secret reset
             GestureDetector(
               onTap: _onTitleTap,
-              child: const Icon(Icons.lock, size: 64, color: Colors.brown),
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: _brandGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _brandGreen.withValues(alpha: 0.35),
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(Icons.lock_rounded,
+                    size: 48, color: _brandGreen),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
               prompt,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Colors.brown,
+                color: _textColor,
               ),
             ),
             const SizedBox(height: 8),
@@ -175,34 +193,51 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
               child: Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey, fontSize: 14),
+                style: const TextStyle(color: _mutedText, fontSize: 14),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // PIN dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(4, (i) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  width: 20,
-                  height: 20,
+                final filled = i < _enteredPin.length;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  width: filled ? 22 : 18,
+                  height: filled ? 22 : 18,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: i < _enteredPin.length
-                        ? Colors.brown
-                        : Colors.brown.shade100,
+                    color: filled ? _brandGreen : Colors.green.shade100,
+                    border: Border.all(
+                      color: filled
+                          ? _brandShadow
+                          : _brandGreen.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
                   ),
                 );
               }),
             ),
 
             if (_errorMessage.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage,
-                style: const TextStyle(color: Colors.red, fontSize: 14),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _errorMessage,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
 
@@ -273,7 +308,7 @@ class _PadButton extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.brown.withValues(alpha: 0.15),
+              color: Colors.green.withValues(alpha: 0.15),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -285,7 +320,7 @@ class _PadButton extends StatelessWidget {
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w600,
-              color: Colors.brown,
+              color: _textColor,
             ),
           ),
         ),

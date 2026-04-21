@@ -6,6 +6,13 @@ import '../../models/game_progress.dart';
 import '../../providers/progress_provider.dart';
 import '../../services/storage_service.dart';
 
+// ─── Green Design Tokens ──────────────────────────────────────────────────────
+const _brandGreen  = Color(0xFF4CAF6E);
+const _brandShadow = Color(0xFF2A7A48);
+const _bg          = Color(0xFFEDFFF3);
+const _textColor   = Color(0xFF1A3A2A);
+const _mutedText   = Color(0xFF557A65);
+
 /// Profile selection screen — shown when app has multiple registered children
 /// or when no active profile is set.
 ///
@@ -17,14 +24,9 @@ class ProfileSelectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProgressProvider>();
-    const brandOrange = Color(0xFFFF9A3C);
-    const brandShadow = Color(0xFFC85A00);
-    const bg = Color(0xFFFFF8E7);
-    const textColor = Color(0xFF3D2B1A);
-    const mutedText = Color(0xFF8D6E63);
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: _bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
@@ -36,7 +38,7 @@ class ProfileSelectScreen extends StatelessWidget {
                 style: GoogleFonts.baloo2(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
-                  color: textColor,
+                  color: _textColor,
                   height: 1.1,
                 ),
               ),
@@ -45,7 +47,7 @@ class ProfileSelectScreen extends StatelessWidget {
                 'Pilih profil atau tambah anak baru.',
                 style: GoogleFonts.dmSans(
                   fontSize: 15,
-                  color: mutedText,
+                  color: _mutedText,
                 ),
               ),
               const SizedBox(height: 24),
@@ -73,11 +75,7 @@ class ProfileSelectScreen extends StatelessWidget {
 
               // Add new child button
               const SizedBox(height: 8),
-              _AddButton(
-                onTap: () => _showAddProfile(context),
-                brandOrange: brandOrange,
-                brandShadow: brandShadow,
-              ),
+              _AddButton(onTap: () => _showAddProfile(context)),
             ],
           ),
         ),
@@ -110,7 +108,6 @@ class ProfileSelectScreen extends StatelessWidget {
         onConfirm: () async {
           Navigator.pop(ctx);
           await context.read<ProgressProvider>().deleteProfile(profile.id);
-          // If no profiles left, go to onboarding
           if (context.mounted) {
             final provider = context.read<ProgressProvider>();
             if (!provider.hasAnyProfile) {
@@ -138,12 +135,9 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brandOrange = Color(0xFFFF9A3C);
-    const textColor = Color(0xFF3D2B1A);
-    const mutedText = Color(0xFF8D6E63);
     final shadowColor =
-        isActive ? const Color(0xFFC85A00) : const Color(0xFFD7C4B0);
-    final cardColor = isActive ? brandOrange : Colors.white;
+        isActive ? _brandShadow : const Color(0xFFA5D6B5);
+    final cardColor = isActive ? _brandGreen : Colors.white;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -163,7 +157,7 @@ class _ProfileCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 border: isActive
                     ? null
-                    : Border.all(color: const Color(0xFFFFE0B2)),
+                    : Border.all(color: const Color(0xFFC8E6C9)),
               ),
               child: Row(
                 children: [
@@ -174,7 +168,7 @@ class _ProfileCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isActive
                           ? Colors.white.withValues(alpha: 0.25)
-                          : const Color(0xFFFFF3E0),
+                          : const Color(0xFFE8F5E9),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -185,7 +179,7 @@ class _ProfileCard extends StatelessWidget {
                         style: GoogleFonts.baloo2(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          color: isActive ? Colors.white : brandOrange,
+                          color: isActive ? Colors.white : _brandGreen,
                         ),
                       ),
                     ),
@@ -202,7 +196,7 @@ class _ProfileCard extends StatelessWidget {
                           style: GoogleFonts.baloo2(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
-                            color: isActive ? Colors.white : textColor,
+                            color: isActive ? Colors.white : _textColor,
                             height: 1.1,
                           ),
                         ),
@@ -213,7 +207,7 @@ class _ProfileCard extends StatelessWidget {
                             fontSize: 13,
                             color: isActive
                                 ? Colors.white.withValues(alpha: 0.85)
-                                : mutedText,
+                                : _mutedText,
                           ),
                         ),
                       ],
@@ -227,7 +221,7 @@ class _ProfileCard extends StatelessWidget {
                       Icons.delete_outline_rounded,
                       color: isActive
                           ? Colors.white.withValues(alpha: 0.7)
-                          : mutedText,
+                          : _mutedText,
                       size: 22,
                     ),
                     tooltip: 'Hapus profil',
@@ -244,14 +238,8 @@ class _ProfileCard extends StatelessWidget {
 
 class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
-  final Color brandOrange;
-  final Color brandShadow;
 
-  const _AddButton({
-    required this.onTap,
-    required this.brandOrange,
-    required this.brandShadow,
-  });
+  const _AddButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -259,7 +247,7 @@ class _AddButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: brandShadow,
+          color: _brandShadow,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Transform.translate(
@@ -267,7 +255,7 @@ class _AddButton extends StatelessWidget {
           child: Container(
             height: 64,
             decoration: BoxDecoration(
-              color: brandOrange,
+              color: _brandGreen,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -334,16 +322,13 @@ class _AddProfileSheetState extends State<_AddProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const textColor = Color(0xFF3D2B1A);
-    const mutedText = Color(0xFF8D6E63);
-
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFFFFF8E7),
+          color: _bg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
@@ -356,7 +341,7 @@ class _AddProfileSheetState extends State<_AddProfileSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD7C4B0),
+                  color: const Color(0xFFA5D6B5),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -367,13 +352,13 @@ class _AddProfileSheetState extends State<_AddProfileSheet> {
               style: GoogleFonts.baloo2(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: textColor,
+                color: _textColor,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               'Data progress tersimpan terpisah untuk setiap anak.',
-              style: GoogleFonts.dmSans(fontSize: 14, color: mutedText),
+              style: GoogleFonts.dmSans(fontSize: 14, color: _mutedText),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -384,11 +369,11 @@ class _AddProfileSheetState extends State<_AddProfileSheet> {
               style: GoogleFonts.baloo2(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: textColor,
+                color: _textColor,
               ),
               decoration: InputDecoration(
                 hintText: 'Tulis nama di sini',
-                hintStyle: GoogleFonts.dmSans(color: Colors.brown.shade200),
+                hintStyle: GoogleFonts.dmSans(color: Colors.green.shade200),
                 counterText: '',
               ),
               onSubmitted: (_) => _submit(),
@@ -411,14 +396,14 @@ class _AddProfileSheetState extends State<_AddProfileSheet> {
                 width: double.infinity,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC85A00),
+                  color: _brandShadow,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Transform.translate(
                   offset: const Offset(-4, -5),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF9A3C),
+                      color: _brandGreen,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Center(
@@ -499,12 +484,9 @@ class _DeleteProfileSheetState extends State<_DeleteProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const textColor = Color(0xFF3D2B1A);
-    const mutedText = Color(0xFF8D6E63);
-
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFFFF8E7),
+        color: _bg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
@@ -516,7 +498,7 @@ class _DeleteProfileSheetState extends State<_DeleteProfileSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFD7C4B0),
+                color: const Color(0xFFA5D6B5),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -530,15 +512,15 @@ class _DeleteProfileSheetState extends State<_DeleteProfileSheet> {
             style: GoogleFonts.baloo2(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: textColor,
+              color: _textColor,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
             'Semua data progress akan hilang permanen.\nMasukkan PIN orang tua untuk konfirmasi.',
-            style:
-                GoogleFonts.dmSans(fontSize: 14, color: mutedText, height: 1.4),
+            style: GoogleFonts.dmSans(
+                fontSize: 14, color: _mutedText, height: 1.4),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -555,7 +537,7 @@ class _DeleteProfileSheetState extends State<_DeleteProfileSheet> {
                   shape: BoxShape.circle,
                   color: i < _pin.length
                       ? const Color(0xFFE53935)
-                      : Colors.brown.shade100,
+                      : Colors.green.shade100,
                 ),
               );
             }),
@@ -620,7 +602,7 @@ class _MiniNumberPad extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.brown.withValues(alpha: 0.12),
+                            color: Colors.green.withValues(alpha: 0.12),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -632,7 +614,7 @@ class _MiniNumberPad extends StatelessWidget {
                           style: GoogleFonts.dmSans(
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF3D2B1A),
+                            color: _textColor,
                           ),
                         ),
                       ),
