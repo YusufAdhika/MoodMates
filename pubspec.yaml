@@ -57,6 +57,9 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/ui/
+    # Background images
+    - assets/images/background/
     # Character & emotion face illustrations
     - assets/images/characters/
     # Social situation illustrations
