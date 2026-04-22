@@ -57,6 +57,9 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/ui/
+    # Background images
+    - assets/images/background/
     # Character & emotion face illustrations
     - assets/images/characters/
     # Social situation illustrations
@@ -67,5 +70,7 @@ flutter:
     - assets/audio/praise/
     # Correct/incorrect sound effects
     - assets/audio/sfx/
+    # Background music
+    - assets/audio/background/
     # Raccoo emotion video animations
     - assets/video/

@@ -48,7 +48,7 @@ const List<_EmotionCardData> _cards = [
     emoji: '😊',
     description: 'Senang itu rasanya mau loncat kegirangan!',
     raccooSpeech:
-        'Ini namanya SENANG!\nRasanya hangat di dada dan mau loncat-loncat terus.\nRaccoo suka banget kalau lagi senang!',
+    'Ini namanya SENANG!\nRasanya hangat di dada dan mau loncat-loncat terus.\nRaccoo suka banget kalau lagi senang!',
     whenExamples: 'Dapat hadiah · Main bareng teman · Makan es krim',
     audioAsset: AudioAsset.emotionHappy,
     videoPath: 'assets/video/raccoo_happy.mp4',
@@ -61,7 +61,7 @@ const List<_EmotionCardData> _cards = [
     emoji: '😢',
     description: 'Sedih itu rasanya dada berat dan pengen nangis.',
     raccooSpeech:
-        'Ini namanya SEDIH.\nRasanya dada jadi berat dan mata mau nangis.\nTidak apa-apa lho kalau kamu nangis!',
+    'Ini namanya SEDIH.\nRasanya dada jadi berat dan mata mau nangis.\nTidak apa-apa lho kalau kamu nangis!',
     whenExamples: 'Balon terbang pergi · Teman pulang duluan · Mainan rusak',
     audioAsset: AudioAsset.emotionSad,
     videoPath: 'assets/video/raccoo_sad.mp4',
@@ -74,7 +74,7 @@ const List<_EmotionCardData> _cards = [
     emoji: '😠',
     description: 'Marah itu rasanya panas di dalam.',
     raccooSpeech:
-        'Ini namanya MARAH.\nRasanya panas di dalam dan ingin berteriak.\nRaccoo juga pernah marah kok!',
+    'Ini namanya MARAH.\nRasanya panas di dalam dan ingin berteriak.\nRaccoo juga pernah marah kok!',
     whenExamples: 'Mainan diambil · Tidak didengarkan · Antrian diserobot',
     audioAsset: AudioAsset.emotionAngry,
     videoPath: 'assets/video/raccoo_angry.mp4.mp4',
@@ -87,7 +87,7 @@ const List<_EmotionCardData> _cards = [
     emoji: '😨',
     description: 'Takut itu rasanya jantung dag dig dug.',
     raccooSpeech:
-        'Ini namanya TAKUT.\nRasanya jantung dag dig dug dan badan gemetar.\nSemua orang pernah takut, termasuk Raccoo!',
+    'Ini namanya TAKUT.\nRasanya jantung dag dig dug dan badan gemetar.\nSemua orang pernah takut, termasuk Raccoo!',
     whenExamples: 'Suara petir · Gelap sendiri · Hewan besar yang baru dikenal',
     audioAsset: AudioAsset.emotionScared,
     videoPath: 'assets/video/raccoo_scare.mp4',
@@ -100,8 +100,9 @@ const List<_EmotionCardData> _cards = [
     emoji: '😲',
     description: 'Terkejut itu rasanya tiba-tiba — HAH!',
     raccooSpeech:
-        'Ini namanya TERKEJUT.\nRasanya tiba-tiba — HAH! Mata langsung membelalak.\nBisa terkejut yang senang, bisa juga yang kaget!',
-    whenExamples: 'Teman mengagetkan · Dapat kejutan · Lihat sesuatu tak terduga',
+    'Ini namanya TERKEJUT.\nRasanya tiba-tiba — HAH! Mata langsung membelalak.\nBisa terkejut yang senang, bisa juga yang kaget!',
+    whenExamples:
+    'Teman mengagetkan · Dapat kejutan · Lihat sesuatu tak terduga',
     audioAsset: AudioAsset.emotionSurprised,
     videoPath: 'assets/video/raccoo_shock.mp4',
   ),
@@ -113,7 +114,7 @@ const List<_EmotionCardData> _cards = [
     emoji: '🤢',
     description: 'Jijik itu rasanya hidung berkerut — eugh!',
     raccooSpeech:
-        'Ini namanya JIJIK.\nRasanya hidung berkerut dan perut tidak enak.\nRaccoo paling jijik sama makanan berjamur, hiii!',
+    'Ini namanya JIJIK.\nRasanya hidung berkerut dan perut tidak enak.\nRaccoo paling jijik sama makanan berjamur, hiii!',
     whenExamples: 'Bau tidak sedap · Makanan busuk · Sesuatu yang kotor',
     audioAsset: AudioAsset.emotionDisgust,
     videoPath: 'assets/video/raccoo_disgust.mp4',
@@ -122,11 +123,6 @@ const List<_EmotionCardData> _cards = [
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
-/// "Raccoo Feel Cards" — pengenalan emosi mode flashcard.
-///
-/// Anak mengetuk kartu tertutup untuk membaliknya (animasi flip 3D),
-/// mendengar narasi Raccoo, lalu menggeser ke emosi berikutnya.
-/// Tidak ada benar/salah — murni eksplorasi.
 class FeelCardsScreen extends StatefulWidget {
   const FeelCardsScreen({super.key});
 
@@ -143,25 +139,27 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
   bool _isFlipped = false;
   bool _isFlipping = false;
 
-  // Flip animation
+  late AudioService _audio;
+
   late AnimationController _flipController;
   late Animation<double> _flipAnimation;
 
-  // Raccoo bounce
   late AnimationController _raccooController;
   late Animation<double> _raccooAnimation;
 
-  // Card entrance
   late AnimationController _entranceController;
   late Animation<Offset> _entranceAnimation;
 
-  // Celebration (done screen)
   late AnimationController _celebrationController;
   late Animation<double> _celebrationAnimation;
 
   @override
   void initState() {
     super.initState();
+    _audio = context.read<AudioService>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _audio.playBg(AudioAsset.bgMain);
+    });
 
     _flipController = AnimationController(
       vsync: this,
@@ -207,14 +205,13 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
 
   @override
   void dispose() {
+    _audio.stopBg();
     _flipController.dispose();
     _raccooController.dispose();
     _entranceController.dispose();
     _celebrationController.dispose();
     super.dispose();
   }
-
-  // ── Navigation ────────────────────────────────────────────────────────────
 
   void _startCards() {
     setState(() {
@@ -234,7 +231,6 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
       _isFlipped = true;
       _isFlipping = false;
     });
-    // Play audio after flip reveals the card
     if (mounted) {
       final audio = _cards[_currentIndex].audioAsset;
       if (audio != null) {
@@ -252,11 +248,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
       _flipController.reset();
       _entranceController.forward(from: 0);
     } else {
-      // Record that child completed the feel cards session
       await context.read<ProgressProvider>().recordSession(
-            gameId: GameProgress.gameFeelCards,
-            wasCorrect: true,
-          );
+        gameId: GameProgress.gameFeelCards,
+        wasCorrect: true,
+      );
       setState(() => _phase = _ScreenPhase.done);
       _celebrationController.forward(from: 0);
     }
@@ -269,7 +264,6 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
         _isFlipped = false;
       });
       _flipController.reset();
-      // Entrance from left
       _entranceAnimation = Tween<Offset>(
         begin: const Offset(-1.2, 0),
         end: Offset.zero,
@@ -280,7 +274,6 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
         ),
       );
       _entranceController.forward(from: 0);
-      // Reset to right direction for next forward navigation
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _entranceAnimation = Tween<Offset>(
           begin: const Offset(1.2, 0),
@@ -302,8 +295,6 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -321,92 +312,118 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
   // ── Intro Screen ──────────────────────────────────────────────────────────
 
   Widget _buildIntro() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          // AppBar area
-          Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 8),
-            child: Row(
-              children: [
-                _BackButton(onTap: () => context.pop()),
-                const Spacer(),
-                Text(
-                  'Feel Cards',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF3D2B1A),
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/background/bg_racoo_feels.png',
+            width: 64,
+            height: 64,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 8),
+                child: Row(
+                  children: [
+                    _Button(
+                      img: 'assets/images/ui/ic_left_feel.png',
+                      width: 64,
+                      height: 64,
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        context.pop();
+                      },
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Feel Cards',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF3D2B1A),
+                      ),
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 40),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+
+              AnimatedBuilder(
+                animation: _raccooAnimation,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(0, _raccooAnimation.value),
+                  child: child,
+                ),
+                child: Container(
+                  width: 160,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/characters/racoo_avatar_green.png',
+                      width: 160,
+                      height: 160,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                const SizedBox(width: 40), // balance
-              ],
-            ),
-          ),
-
-          const Spacer(),
-
-          // Raccoo bobbing
-          AnimatedBuilder(
-            animation: _raccooAnimation,
-            builder: (context, child) => Transform.translate(
-              offset: Offset(0, _raccooAnimation.value),
-              child: child,
-            ),
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.sentiment_satisfied_alt_rounded,
-                size: 100,
-                color: Color(0xFFFF9A3C),
+
+              const SizedBox(height: 32),
+
+              const _SpeechBubble(
+                text:
+                'Hei! Yuk kenalan sama\nperasaan-perasaan bareng Raccoo!\nAda 6 teman baru nih!',
               ),
-            ),
-          ),
 
-          const SizedBox(height: 32),
+              const SizedBox(height: 12),
 
-          // Speech bubble
-          const _SpeechBubble(
-            text: 'Hei! Yuk kenalan sama\nperasaan-perasaan bareng Raccoo!\nAda 6 teman baru nih!',
-          ),
-
-          const SizedBox(height: 12),
-
-          // Dots preview
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _cards.length,
-              (i) => Container(
-                width: 10,
-                height: 10,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF9A3C).withValues(alpha: 0.35),
-                  shape: BoxShape.circle,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _cards.length,
+                      (i) => Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF9A3C).withValues(alpha: 0.35),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
               ),
-            ),
+
+              const Spacer(),
+
+              _Button(
+                width: screenWidth,
+                height: 150,
+                img: 'assets/images/ui/button_mulai.png',
+                onTap: () {
+                  _audio.play(AudioAsset.normalClick);
+                  _startCards();
+                },
+              ),
+
+              const SizedBox(height: 24),
+            ],
           ),
-
-          const Spacer(),
-
-          // Start button
-          _PrimaryButton(
-            label: 'Mulai!',
-            onTap: _startCards,
-          ),
-
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -415,148 +432,162 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
   Widget _buildCards() {
     final card = _cards[_currentIndex];
 
-    return Column(
+    return Stack(
       children: [
-        // Top bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Row(
-            children: [
-              _BackButton(
-                onTap: () {
-                  context.read<AudioService>().stop();
-                  context.pop();
-                },
-              ),
-              const Spacer(),
-              Text(
-                '${_currentIndex + 1} dari ${_cards.length}',
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF8D6E63),
-                ),
-              ),
-              const Spacer(),
-              const SizedBox(width: 40),
-            ],
+        Positioned.fill(
+          child: Image.asset(
+            width: 64,
+            height: 64,
+            'assets/images/background/bg_racoo_feels.png',
+            fit: BoxFit.cover,
           ),
         ),
-
-        // Progress dots
-        Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_cards.length, (i) {
-              final isActive = i == _currentIndex;
-              final isDone = i < _currentIndex;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: isActive ? 24 : 10,
-                height: 10,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: isDone
-                      ? const Color(0xFF4CAF6E)
-                      : isActive
-                          ? const Color(0xFFFF9A3C)
-                          : const Color(0xFFFF9A3C).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              );
-            }),
-          ),
-        ),
-
-        // Card area
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: SlideTransition(
-              position: _entranceAnimation,
-              child: GestureDetector(
-                onHorizontalDragEnd: (details) {
-                  if (details.primaryVelocity == null) return;
-                  if (details.primaryVelocity! < -300 && _isFlipped) {
-                    _nextCard();
-                  } else if (details.primaryVelocity! > 300) {
-                    _prevCard();
-                  }
-                },
-                child: _isFlipped
-                    ? _CardBack(
-                        card: card,
-                        onReplayAudio: _replayAudio,
-                        flipAnimation: _flipAnimation,
-                      )
-                    : _CardFront(
-                        card: card,
-                        onTap: _flipCard,
-                        flipAnimation: _flipAnimation,
-                      ),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  _Button(
+                    img: 'assets/images/ui/ic_left_feel.png',
+                    width: 64,
+                    height: 64,
+                    onTap: () {
+                      _audio.play(AudioAsset.normalClick);
+                      _audio.stop();
+                      context.pop();
+                    },
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${_currentIndex + 1} dari ${_cards.length}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFFFFFFF),
+                    ),
+                  ),
+                  const Spacer(),
+                  const SizedBox(width: 40),
+                ],
               ),
             ),
-          ),
-        ),
 
-        // Bottom navigation
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: Row(
-            children: [
-              // Prev button
-              if (_currentIndex > 0)
-                _NavButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: _prevCard,
-                  tooltip: 'Kembali',
-                )
-              else
-                const SizedBox(width: 56),
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_cards.length, (i) {
+                  final isActive = i == _currentIndex;
+                  final isDone = i < _currentIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: isActive ? 24 : 10,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isDone
+                          ? const Color(0xFF57C00E)
+                          : isActive
+                          ? const Color(0xFFFFFFFF)
+                          : const Color(0xFFFFFFFF).withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  );
+                }),
+              ),
+            ),
 
-              const Spacer(),
-
-              // Hint text
-              if (!_isFlipped)
-                Text(
-                  'Ketuk kartu untuk membuka!',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
-                    color: const Color(0xFF8D6E63),
-                  ),
-                )
-              else
-                Text(
-                  _currentIndex < _cards.length - 1
-                      ? 'Geser → untuk lanjut'
-                      : 'Kamu sudah lihat semuanya!',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
-                    color: const Color(0xFF8D6E63),
+            Expanded(
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: SlideTransition(
+                  position: _entranceAnimation,
+                  child: GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      if (details.primaryVelocity == null) return;
+                      if (details.primaryVelocity! < -300 && _isFlipped) {
+                        _nextCard();
+                      } else if (details.primaryVelocity! > 300) {
+                        _prevCard();
+                      }
+                    },
+                    child: _isFlipped
+                        ? _CardBack(
+                      card: card,
+                      onReplayAudio: _replayAudio,
+                      flipAnimation: _flipAnimation,
+                    )
+                        : _CardFront(
+                      card: card,
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        _flipCard();
+                      },
+                      flipAnimation: _flipAnimation,
+                    ),
                   ),
                 ),
+              ),
+            ),
 
-              const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  if (_currentIndex > 0)
+                    _Button(
+                      width: 64,
+                      height: 64,
+                      img: 'assets/images/ui/ic_left_feel.png',
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        _prevCard();
+                      },
+                    )
+                  else
+                    const SizedBox(width: 56),
 
-              // Next button
-              if (_isFlipped)
-                _NavButton(
-                  icon: _currentIndex < _cards.length - 1
-                      ? Icons.arrow_forward_rounded
-                      : Icons.check_rounded,
-                  color: _currentIndex < _cards.length - 1
-                      ? const Color(0xFFFF9A3C)
-                      : const Color(0xFF4CAF6E),
-                  onTap: _nextCard,
-                  tooltip: _currentIndex < _cards.length - 1
-                      ? 'Lanjut'
-                      : 'Selesai',
-                )
-              else
-                const SizedBox(width: 56),
-            ],
-          ),
+                  const Spacer(),
+
+                  if (!_isFlipped)
+                    Text(
+                      'Ketuk kartu untuk membuka!',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 20,
+                        color: const Color(0xFFFFFFFF),
+                      ),
+                    )
+                  else
+                    Text(
+                      _currentIndex < _cards.length - 1
+                          ? 'Geser → untuk lanjut'
+                          : 'Kamu sudah lihat semuanya!',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 20,
+                        color: const Color(0xFFFFFFFF),
+                      ),
+                    ),
+
+                  const Spacer(),
+
+                  if (_isFlipped)
+                    _Button(
+                      width: 64,
+                      height: 64,
+                      img: 'assets/images/ui/ic_right_feel.png',
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        _nextCard();
+                      },
+                    )
+                  else
+                    const SizedBox(width: 56),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -565,172 +596,190 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
   // ── Done Screen ───────────────────────────────────────────────────────────
 
   Widget _buildDone() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-
-          // Celebration Raccoo
-          ScaleTransition(
-            scale: _celebrationAnimation,
-            child: AnimatedBuilder(
-              animation: _raccooAnimation,
-              builder: (context, child) => Transform.translate(
-                offset: Offset(0, _raccooAnimation.value * 1.5),
-                child: child,
-              ),
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD54F).withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.sentiment_very_satisfied_rounded,
-                  size: 120,
-                  color: Color(0xFFFF9A3C),
-                ),
-              ),
-            ),
+    return Stack(
+      children: [
+        // background image
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/background/bg_success_racoo_feels.png',
+            fit: BoxFit.cover,
           ),
+        ),
 
-          const SizedBox(height: 24),
+        // konten utama
+        Positioned.fill(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
 
-          Text(
-            'Hore! 🎉',
-            style: GoogleFonts.baloo2(
-              fontSize: 40,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF3D2B1A),
-              height: 1.1,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            'Kamu sudah kenal semua\nteman perasaan Raccoo!',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF3D2B1A),
-              height: 1.3,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Emotion chips summary
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: _cards.map((c) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
+                ScaleTransition(
+                  scale: _celebrationAnimation,
+                  child: AnimatedBuilder(
+                    animation: _raccooAnimation,
+                    builder: (context, child) => Transform.translate(
+                      offset: Offset(0, _raccooAnimation.value),
+                      child: child,
+                    ),
+                    child: Container(
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/characters/racoo_avatar_blue.png',
+                          width: 160,
+                          height: 160,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: c.cardColor,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: c.shadowColor.withValues(alpha: 0.4),
-                      offset: const Offset(2, 3),
-                      blurRadius: 0,
+
+                const SizedBox(height: 24),
+
+                Text(
+                  'Hore! 🎉',
+                  style: GoogleFonts.baloo2(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF3D2B1A),
+                    height: 1.1,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  'Kamu sudah kenal semua\nteman perasaan Raccoo!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF3D2B1A),
+                    height: 1.3,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: _cards.map((c) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.cardColor,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: c.shadowColor.withValues(alpha: 0.4),
+                            offset: const Offset(2, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${c.emoji} ${c.emotion.labelId}',
+                        style: GoogleFonts.baloo2(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF3D2B1A),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 16),
+
+                Text(
+                  'Kamu luar biasa!',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    color: const Color(0xFF8D6E63),
+                  ),
+                ),
+
+                const Spacer(),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    3,
+                        (i) => TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 400 + i * 150),
+                      curve: const Cubic(0.34, 1.56, 0.64, 1),
+                      builder: (context, v, _) => Transform.scale(
+                        scale: v,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(
+                            Icons.star_rounded,
+                            size: 48,
+                            color: Color(0xFFFFD54F),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SecondaryButton(
+                        label: 'Lihat Lagi',
+                        icon: Icons.replay_rounded,
+                        onTap: () {
+                          _audio.play(AudioAsset.normalClick);
+                          setState(() {
+                            _phase = _ScreenPhase.cards;
+                            _currentIndex = 0;
+                            _isFlipped = false;
+                          });
+                          _flipController.reset();
+                          _entranceController.forward(from: 0);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _PrimaryButton(
+                        label: 'Selesai',
+                        onTap: () {
+                          _audio.play(AudioAsset.normalClick);
+                          context.pop();
+                        },
+                      ),
                     ),
                   ],
                 ),
-                child: Text(
-                  '${c.emoji} ${c.emotion.labelId}',
-                  style: GoogleFonts.baloo2(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF3D2B1A),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
 
-          const SizedBox(height: 16),
-
-          Text(
-            'Kamu luar biasa!',
-            style: GoogleFonts.dmSans(
-              fontSize: 16,
-              color: const Color(0xFF8D6E63),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-
-          const Spacer(),
-
-          // Stars
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              3,
-              (i) => TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 400 + i * 150),
-                curve: const Cubic(0.34, 1.56, 0.64, 1),
-                builder: (context, v, _) => Transform.scale(
-                  scale: v,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(
-                      Icons.star_rounded,
-                      size: 48,
-                      color: Color(0xFFFFD54F),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Buttons
-          Row(
-            children: [
-              Expanded(
-                child: _SecondaryButton(
-                  label: 'Lihat Lagi',
-                  icon: Icons.replay_rounded,
-                  onTap: () {
-                    setState(() {
-                      _phase = _ScreenPhase.cards;
-                      _currentIndex = 0;
-                      _isFlipped = false;
-                    });
-                    _flipController.reset();
-                    _entranceController.forward(from: 0);
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _PrimaryButton(
-                  label: 'Selesai',
-                  onTap: () => context.pop(),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-// ─── Card Front (tertutup) ────────────────────────────────────────────────────
+// ─── Card Front ───────────────────────────────────────────────────────────────
 
 class _CardFront extends StatelessWidget {
   final _EmotionCardData card;
@@ -779,16 +828,19 @@ class _CardFront extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 120,
-                height: 120,
+                width: 160,
+                height: 160,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.help_outline_rounded,
-                  size: 72,
-                  color: Color(0xFFFF9A3C),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/characters/racoo_avatar_questioning.png',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -817,7 +869,7 @@ class _CardFront extends StatelessWidget {
   }
 }
 
-// ─── Card Back (terbuka) ──────────────────────────────────────────────────────
+// ─── Card Back ────────────────────────────────────────────────────────────────
 
 class _CardBack extends StatefulWidget {
   final _EmotionCardData card;
@@ -904,168 +956,179 @@ class _CardBackState extends State<_CardBack> {
           ],
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
           child: Column(
             children: [
               // Raccoo video or fallback icon
               ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
                 child: _videoReady && _videoController != null
                     ? AspectRatio(
-                        aspectRatio: _videoController!.value.aspectRatio,
-                        child: VideoPlayer(_videoController!),
-                      )
+                  aspectRatio: _videoController!.value.aspectRatio,
+                  child: VideoPlayer(_videoController!),
+                )
                     : Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          widget.card.icon,
-                          size: 96,
-                          color: widget.card.shadowColor,
-                        ),
-                      ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Emotion name
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.card.emoji,
-                      style: const TextStyle(fontSize: 24),
+                  width: double.infinity,
+                  height: 200,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      widget.card.emotion.labelId.toUpperCase(),
-                      style: GoogleFonts.baloo2(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF3D2B1A),
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: Icon(
+                    widget.card.icon,
+                    size: 96,
+                    color: widget.card.shadowColor,
+                  ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // Description
-              Text(
-                widget.card.description,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF3D2B1A),
-                  height: 1.4,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Raccoo speech bubble
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.sentiment_satisfied_alt_rounded,
-                          size: 20,
-                          color: Color(0xFFFF9A3C),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Raccoo berkata:',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF8D6E63),
-                            letterSpacing: 0.5,
+                    // Emotion name
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.card.emoji,
+                            style: const TextStyle(fontSize: 24),
                           ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: widget.onReplayAudio,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.volume_up_rounded,
-                              size: 20,
-                              color: Color(0xFFFF9A3C),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.card.emotion.labelId.toUpperCase(),
+                            style: GoogleFonts.baloo2(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF3D2B1A),
+                              letterSpacing: 1,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.card.raccooSpeech,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 16,
-                        height: 1.6,
-                        color: const Color(0xFF3D2B1A),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-              // When examples
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('💡', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.card.whenExamples,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 16,
-                          color: const Color(0xFF5D4037),
-                          height: 1.5,
-                        ),
+                    // Description
+                    // Text(
+                    //   widget.card.description,
+                    //   textAlign: TextAlign.center,
+                    //   style: GoogleFonts.baloo2(
+                    //     fontSize: 18,
+                    //     fontWeight: FontWeight.w700,
+                    //     color: const Color(0xFF3D2B1A),
+                    //     height: 1.4,
+                    //   ),
+                    // ),
+                    //
+                    // const SizedBox(height: 16),
+
+                    // Raccoo speech bubble
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.sentiment_satisfied_alt_rounded,
+                                size: 20,
+                                color: Color(0xFFFF9A3C),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Raccoo berkata:',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF8D6E63),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: widget.onReplayAudio,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF9A3C)
+                                        .withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.volume_up_rounded,
+                                    size: 20,
+                                    color: Color(0xFFFF9A3C),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.card.raccooSpeech,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              height: 1.6,
+                              color: const Color(0xFF3D2B1A),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+
+                    const SizedBox(height: 12),
+
+                    /*
+                    // When examples
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('💡', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.card.whenExamples,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 16,
+                                color: const Color(0xFF5D4037),
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),*/
                   ],
                 ),
               ),
@@ -1081,6 +1144,7 @@ class _CardBackState extends State<_CardBack> {
 
 class _SpeechBubble extends StatelessWidget {
   final String text;
+
   const _SpeechBubble({required this.text});
 
   @override
@@ -1111,34 +1175,49 @@ class _SpeechBubble extends StatelessWidget {
     );
   }
 }
-
-class _BackButton extends StatelessWidget {
+class _Button extends StatelessWidget {
+  final String img;
   final VoidCallback onTap;
-  const _BackButton({required this.onTap});
+  final double width;
+  final double height;
+
+  const _Button({
+    required this.img,
+    required this.onTap,
+    required this.width,
+    required this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0xFFC85A00),
-              offset: Offset(2, 3),
-              blurRadius: 0,
+      child: Image.asset(
+        img,
+        width: width,
+        height: height,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFFC85A00),
+                  offset: Offset(2, 3),
+                  blurRadius: 0,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: const Icon(
-          Icons.arrow_back_rounded,
-          color: Color(0xFF3D2B1A),
-          size: 28,
-        ),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: Color(0xFF3D2B1A),
+              size: 28,
+            ),
+          );
+        },
       ),
     );
   }

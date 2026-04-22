@@ -4,6 +4,13 @@ import 'package:provider/provider.dart';
 import '../../models/game_progress.dart';
 import '../../providers/progress_provider.dart';
 
+// ─── Green Design Tokens ──────────────────────────────────────────────────────
+const _brandGreen  = Color(0xFF4CAF6E);
+const _brandShadow = Color(0xFF2A7A48);
+const _bg          = Color(0xFFEDFFF3);
+const _textColor   = Color(0xFF1A3A2A);
+const _mutedText   = Color(0xFF557A65);
+
 /// Parent Dashboard — PIN-protected adult controls.
 ///
 /// Features:
@@ -20,10 +27,14 @@ class ParentDashboardScreen extends StatelessWidget {
     final progress = context.watch<ProgressProvider>().progress;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E7),
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFB347),
-        title: const Text('Dashboard Orang Tua'),
+        backgroundColor: _brandGreen,
+        foregroundColor: Colors.white,
+        title: const Text(
+          'Dashboard Orang Tua',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/home'),
@@ -37,7 +48,7 @@ class ParentDashboardScreen extends StatelessWidget {
 
           // Child name
           _DashboardSection(
-            title: 'Nama Anak',
+            title: 'NAMA ANAK',
             child: Row(
               children: [
                 Expanded(
@@ -48,13 +59,14 @@ class ParentDashboardScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       color: progress.childName.isNotEmpty
-                          ? Colors.brown
-                          : Colors.grey,
+                          ? _textColor
+                          : _mutedText,
                     ),
                   ),
                 ),
                 TextButton(
                   onPressed: () => _showNameDialog(context),
+                  style: TextButton.styleFrom(foregroundColor: _brandGreen),
                   child: const Text('Ubah'),
                 ),
               ],
@@ -63,13 +75,20 @@ class ParentDashboardScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           _DashboardSection(
-            title: 'Profil Anak',
+            title: 'PROFIL ANAK',
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.switch_account, color: Colors.orange),
-              title: const Text('Pilih, tambah, atau hapus profil anak'),
-              subtitle: const Text('Hapus profil perlu PIN orang tua.'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              leading: const Icon(Icons.switch_account, color: _brandGreen),
+              title: const Text(
+                'Pilih, tambah, atau hapus profil anak',
+                style: TextStyle(color: _textColor),
+              ),
+              subtitle: const Text(
+                'Hapus profil perlu PIN orang tua.',
+                style: TextStyle(color: _mutedText),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios,
+                  size: 16, color: _mutedText),
               onTap: () => context.push('/profiles'),
             ),
           ),
@@ -77,12 +96,16 @@ class ParentDashboardScreen extends StatelessWidget {
 
           // Progress
           _DashboardSection(
-            title: 'Perkembangan',
+            title: 'PERKEMBANGAN',
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.bar_chart, color: Colors.orange),
-              title: const Text('Lihat detail bintang dan progres'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              leading: const Icon(Icons.bar_chart, color: _brandGreen),
+              title: const Text(
+                'Lihat detail bintang dan progres',
+                style: TextStyle(color: _textColor),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios,
+                  size: 16, color: _mutedText),
               onTap: () => context.push('/progress'),
             ),
           ),
@@ -90,13 +113,13 @@ class ParentDashboardScreen extends StatelessWidget {
 
           // CSV export
           _DashboardSection(
-            title: 'Ekspor Data (CSV)',
+            title: 'EKSPOR DATA (CSV)',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Buka ringkasan data sesi bermain untuk keperluan penelitian.',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                  style: TextStyle(color: _mutedText, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
@@ -104,7 +127,7 @@ class ParentDashboardScreen extends StatelessWidget {
                   icon: const Icon(Icons.download),
                   label: const Text('Lihat Data CSV'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: _brandGreen,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -115,7 +138,7 @@ class ParentDashboardScreen extends StatelessWidget {
 
           // Tips
           const _DashboardSection(
-            title: 'Panduan Pendampingan',
+            title: 'PANDUAN PENDAMPINGAN',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -179,10 +202,12 @@ class ParentDashboardScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: _mutedText),
             child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: TextButton.styleFrom(foregroundColor: _brandGreen),
             child: const Text('Simpan'),
           ),
         ],
@@ -213,6 +238,7 @@ class ParentDashboardScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(foregroundColor: _brandGreen),
               child: const Text('Tutup'),
             ),
           ],
@@ -230,11 +256,13 @@ class ParentDashboardScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
+            style: TextButton.styleFrom(foregroundColor: _mutedText),
             child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset', style: TextStyle(color: Colors.red)),
+            child:
+                const Text('Reset', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -261,9 +289,18 @@ class _SummaryCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFFD27D), Color(0xFFFFB347)],
+          colors: [Color(0xFF6DD68A), Color(0xFF4CAF6E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: _brandShadow,
+            offset: Offset(4, 6),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -338,7 +375,7 @@ class _DashboardSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.brown.withValues(alpha: 0.08),
+            color: Colors.green.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -351,9 +388,9 @@ class _DashboardSection extends StatelessWidget {
             title,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.grey,
-              letterSpacing: 0.5,
+              fontSize: 12,
+              color: _mutedText,
+              letterSpacing: 0.8,
             ),
           ),
           const SizedBox(height: 8),
@@ -380,15 +417,23 @@ class _TipItem extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: Colors.orange),
+        Icon(icon, size: 20, color: _brandGreen),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(tip,
-                  style: const TextStyle(color: Colors.grey, fontSize: 13)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _textColor,
+                ),
+              ),
+              Text(
+                tip,
+                style: const TextStyle(color: _mutedText, fontSize: 13),
+              ),
             ],
           ),
         ),
