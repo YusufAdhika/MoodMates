@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../main.dart';
 import '../../providers/progress_provider.dart';
+import '../../services/audio_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,13 +13,35 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with RouteAware, WidgetsBindingObserver {
+  late AudioService _audio;
+
   @override
   void initState() {
     super.initState();
+    _audio = context.read<AudioService>();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // TODO: play welcome audio when assets are added
+      if (mounted) _audio.playBg(AudioAsset.bgMain);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _audio.playBg(AudioAsset.bgMain);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _audio.pauseBg();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _audio.stopBg();
+    super.dispose();
   }
 
   @override
@@ -92,16 +116,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     right: screenW * 0.12,
                     child: Column(
                       children: [
-                        _MenuCard(label: 'Raccoo Feel Cards',
+                        _MenuCard(
+                          label: 'Raccoo Feel Cards',
                           screenW: screenW,
-                          onTap: () => context.push('/feel-cards'),),
-                        _MenuCard(label: 'Raccoo Mirror',
+                          onTap: () {
+                            _audio.play(AudioAsset.normalClick);
+                            context.push('/feel-cards');
+                          },
+                        ),
+                        _MenuCard(
+                          label: 'Raccoo Mirror',
                           screenW: screenW,
-                          onTap: () => context.push('/mirror'),),
-                        _MenuCard(label: 'Raccoo Think',
+                          onTap: () {
+                            _audio.play(AudioAsset.normalClick);
+                            context.push('/mirror');
+                          },
+                        ),
+                        _MenuCard(
+                          label: 'Raccoo Think',
                           screenW: screenW,
-                          onTap: () => context.push('/think'),),
-                        const BottomButtons()
+                          onTap: () {
+                            _audio.play(AudioAsset.normalClick);
+                            context.push('/think');
+                          },
+                        ),
+                        BottomButtons(audio: _audio),
                       ],
                     ),
                   ),
@@ -205,7 +244,8 @@ class _MenuCard extends StatelessWidget {
 
 
 class BottomButtons extends StatelessWidget {
-  const BottomButtons({super.key});
+  final AudioService audio;
+  const BottomButtons({super.key, required this.audio});
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +256,10 @@ class BottomButtons extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextButton.icon(
-              onPressed: () => context.push('/profiles'),
+              onPressed: () {
+                audio.play(AudioAsset.normalClick);
+                context.push('/profiles');
+              },
               icon: const Icon(
                 Icons.switch_account_rounded,
                 size: 16,
@@ -225,7 +268,7 @@ class BottomButtons extends StatelessWidget {
               label: const Text(
                 'Ganti Anak',
                 style: TextStyle(
-                  color: Color(0xFF5D3A1A), // dark brown
+                  color: Color(0xFF5D3A1A),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -235,16 +278,19 @@ class BottomButtons extends StatelessWidget {
               ),
             ),
             TextButton.icon(
-              onPressed: () => context.push('/parent-pin'),
+              onPressed: () {
+                audio.play(AudioAsset.normalClick);
+                context.push('/parent-pin');
+              },
               icon: const Icon(
                 Icons.lock_outline,
                 size: 16,
-                color: Color(0xFF5D3A1A), // dark brown
+                color: Color(0xFF5D3A1A),
               ),
               label: const Text(
                 'Mode Orang Tua',
                 style: TextStyle(
-                  color: Color(0xFF5D3A1A), // dark brown
+                  color: Color(0xFF5D3A1A),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),

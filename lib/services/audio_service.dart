@@ -10,11 +10,11 @@ import 'package:just_audio/just_audio.dart';
 ///
 /// Usage:
 ///   context.read<AudioService>().play(AudioAsset.correct);
+///   context.read<AudioService>().playBg(AudioAsset.bgMain);
+///   context.read<AudioService>().stopBg();
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
-
-  // Separate player for background music (if added later)
-  // final AudioPlayer _bgPlayer = AudioPlayer();
+  final AudioPlayer _bgPlayer = AudioPlayer();
 
   Future<void> init() async {
     // Pre-load commonly used SFX so playback is instant.
@@ -23,16 +23,12 @@ class AudioService {
     // await _preload(AudioAsset.incorrect);
   }
 
-  /// Play an audio asset. Safe to call when device is muted — just silent.
+  /// Play a one-shot SFX asset. Safe when device is muted — just silent.
   /// Silently skips if the asset file has not been added to the bundle yet.
   Future<void> play(AudioAsset asset) async {
     try {
-      // Check the asset exists in the bundle before handing it to just_audio.
-      // just_audio throws a FlutterError (not a regular exception) for missing
-      // assets, which triggers the debug error overlay even inside try/catch.
       await rootBundle.load(asset.path);
     } catch (_) {
-      // Asset not bundled yet — skip silently.
       return;
     }
     try {
@@ -40,7 +36,6 @@ class AudioService {
       await _player.setAsset(asset.path);
       await _player.play();
     } catch (e) {
-      // Audio failure is non-fatal: visual instructions are always shown.
       debugPrint('[AudioService] Failed to play ${asset.path}: $e');
     }
   }
@@ -49,8 +44,39 @@ class AudioService {
     await _player.stop();
   }
 
+  /// Start looping background music. Silently skips if already playing or file is missing.
+  Future<void> playBg(AudioAsset asset) async {
+    if (_bgPlayer.playing) return;
+    try {
+      await rootBundle.load(asset.path);
+    } catch (_) {
+      debugPrint('[AudioService] BG asset not found: ${asset.path}');
+      return;
+    }
+    try {
+      await _bgPlayer.setAsset(asset.path);
+      await _bgPlayer.setLoopMode(LoopMode.one);
+      await _bgPlayer.setVolume(0.5);
+      await _bgPlayer.play();
+      debugPrint('[AudioService] BG playing: ${asset.path}');
+    } catch (e) {
+      debugPrint('[AudioService] Failed to play bg ${asset.path}: $e');
+    }
+  }
+
+  /// Pause background music (preserves position).
+  Future<void> pauseBg() async {
+    await _bgPlayer.pause();
+  }
+
+  /// Stop and reset background music.
+  Future<void> stopBg() async {
+    await _bgPlayer.stop();
+  }
+
   void dispose() {
     _player.dispose();
+    _bgPlayer.dispose();
   }
 }
 
@@ -59,6 +85,9 @@ class AudioService {
 enum AudioAsset {
   correct,
   incorrect,
+  normalClick,
+  // Background music
+  bgMain,
   // Praise
   praiseHebat,
   praiseKamuPintar,
@@ -84,6 +113,10 @@ extension AudioAssetPath on AudioAsset {
         return 'assets/audio/sfx/correct.mp3';
       case AudioAsset.incorrect:
         return 'assets/audio/sfx/incorrect.mp3';
+      case AudioAsset.normalClick:
+        return 'assets/audio/sfx/normal_click.mp3';
+      case AudioAsset.bgMain:
+        return 'assets/audio/background/bg_main.mp3';
       case AudioAsset.praiseHebat:
         return 'assets/audio/praise/hebat.mp3';
       case AudioAsset.praiseKamuPintar:

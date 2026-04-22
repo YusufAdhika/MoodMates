@@ -139,6 +139,8 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
   bool _isFlipped = false;
   bool _isFlipping = false;
 
+  late AudioService _audio;
+
   late AnimationController _flipController;
   late Animation<double> _flipAnimation;
 
@@ -154,6 +156,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
   @override
   void initState() {
     super.initState();
+    _audio = context.read<AudioService>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _audio.playBg(AudioAsset.bgMain);
+    });
 
     _flipController = AnimationController(
       vsync: this,
@@ -199,6 +205,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
 
   @override
   void dispose() {
+    _audio.stopBg();
     _flipController.dispose();
     _raccooController.dispose();
     _entranceController.dispose();
@@ -329,7 +336,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                       img: 'assets/images/ui/ic_left_feel.png',
                       width: 64,
                       height: 64,
-                      onTap: () => context.pop(),
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        context.pop();
+                      },
                     ),
                     const Spacer(),
                     Text(
@@ -403,7 +413,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                 width: screenWidth,
                 height: 150,
                 img: 'assets/images/ui/button_mulai.png',
-                onTap: _startCards,
+                onTap: () {
+                  _audio.play(AudioAsset.normalClick);
+                  _startCards();
+                },
               ),
 
               const SizedBox(height: 24),
@@ -440,7 +453,8 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                     width: 64,
                     height: 64,
                     onTap: () {
-                      context.read<AudioService>().stop();
+                      _audio.play(AudioAsset.normalClick);
+                      _audio.stop();
                       context.pop();
                     },
                   ),
@@ -507,7 +521,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                     )
                         : _CardFront(
                       card: card,
-                      onTap: _flipCard,
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        _flipCard();
+                      },
                       flipAnimation: _flipAnimation,
                     ),
                   ),
@@ -524,7 +541,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                       width: 64,
                       height: 64,
                       img: 'assets/images/ui/ic_left_feel.png',
-                      onTap: _prevCard,
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        _prevCard();
+                      },
                     )
                   else
                     const SizedBox(width: 56),
@@ -557,7 +577,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                       width: 64,
                       height: 64,
                       img: 'assets/images/ui/ic_right_feel.png',
-                      onTap: _nextCard,
+                      onTap: () {
+                        _audio.play(AudioAsset.normalClick);
+                        _nextCard();
+                      },
                     )
                   else
                     const SizedBox(width: 56),
@@ -722,6 +745,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                         label: 'Lihat Lagi',
                         icon: Icons.replay_rounded,
                         onTap: () {
+                          _audio.play(AudioAsset.normalClick);
                           setState(() {
                             _phase = _ScreenPhase.cards;
                             _currentIndex = 0;
@@ -736,7 +760,10 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
                     Expanded(
                       child: _PrimaryButton(
                         label: 'Selesai',
-                        onTap: () => context.pop(),
+                        onTap: () {
+                          _audio.play(AudioAsset.normalClick);
+                          context.pop();
+                        },
                       ),
                     ),
                   ],

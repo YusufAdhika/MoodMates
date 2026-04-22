@@ -70,5 +70,7 @@ flutter:
     - assets/audio/praise/
     # Correct/incorrect sound effects
     - assets/audio/sfx/
+    # Background music
+    - assets/audio/background/
     # Raccoo emotion video animations
     - assets/video/

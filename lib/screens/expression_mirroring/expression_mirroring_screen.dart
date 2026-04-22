@@ -188,6 +188,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
 
   // ── Services ─────────────────────────────────────────────────────────────
 
+  late AudioService _audio;
   CameraController? _cameraController;
   final FaceDetectorService _faceService = FaceDetectorService();
   StreamSubscription<FaceDetectionResult>? _detectionSub;
@@ -244,18 +245,20 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
       CurvedAnimation(parent: _raccooController, curve: Curves.easeInOut),
     );
 
+    _audio = context.read<AudioService>();
     _faceService.init();
     _initCamera();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<AudioService>()
-          .play(AudioAsset.instructionExpressionMirroring);
+      if (!mounted) return;
+      _audio.playBg(AudioAsset.bgMain);
+      _audio.play(AudioAsset.instructionExpressionMirroring);
     });
   }
 
   @override
   void dispose() {
+    _audio.stopBg();
     _selfReportTimer?.cancel();
     _noFaceHintTimer?.cancel();
     _detectionSub?.cancel();
