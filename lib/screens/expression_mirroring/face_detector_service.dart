@@ -1,63 +1,89 @@
 import 'dart:async';
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:image/image.dart' as img;
+import 'package:tflite_flutter/tflite_flutter.dart';
 
-/// Detected emotion from ML Kit face analysis.
+/// Detected emotion — label order matches the FER model's output layer:
+///   index 0 → Angry, 1 → Disgust, 2 → Fear,
+///   index 3 → Happy, 4 → Sad,    5 → Surprise
 enum DetectedEmotion {
-  happy,     // smileProbability > 0.7
-  surprised, // eyeOpen > 0.8 && smile < 0.4
-  scared,    // eyeOpen < 0.3 && smile < 0.3
-  unknown,   // face found but emotion unclear
+  angry,
+  disgust,
+  fear,
+  happy,
+  sad,
+  surprise,
+  unknown,
 }
 
 /// Result from one frame analysis.
 class FaceDetectionResult {
   final bool faceFound;
-  final double confidence;       // ML Kit face bounding box confidence (0.0–1.0)
+  final double confidence;
   final DetectedEmotion emotion;
-  final double smileProbability;
-  final double eyeOpenProbability;
+
+  /// Raw softmax probabilities [Angry, Disgust, Fear, Happy, Sad, Surprise].
+  final List<double> probabilities;
 
   const FaceDetectionResult({
     required this.faceFound,
     required this.confidence,
     required this.emotion,
-    required this.smileProbability,
-    required this.eyeOpenProbability,
+    required this.probabilities,
   });
 
   static const FaceDetectionResult noFace = FaceDetectionResult(
     faceFound: false,
     confidence: 0,
     emotion: DetectedEmotion.unknown,
-    smileProbability: 0,
-    eyeOpenProbability: 0,
+    probabilities: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
   );
 }
 
-/// ML Kit face detection wrapper for the Expression Mirroring game.
+/// TFLite FER model + ML Kit face-detection wrapper.
 ///
-/// Throttles frame processing to 5fps to stay smooth on low-end
-/// Android devices (Snapdragon 450 class), common in Indonesia.
+/// Pipeline per frame (throttled to 5 fps):
+///   1. ML Kit detects the face bounding box (fast mode, no classification).
+///   2. JPEG from takePicture() is decoded; face region is cropped.
+///   3. Crop is resized to 48×48, converted to grayscale, normalised → [0, 1].
+///   4. TFLite FER model runs inference on shape [1, 48, 48, 1].
+///   5. Argmax of 6-class softmax output maps to DetectedEmotion.
 ///
 /// Usage:
 ///   final svc = FaceDetectorService();
 ///   await svc.init();
-///   svc.results.listen((result) { ... });
+///   svc.results.listen((r) { ... });
 ///   svc.startProcessing(cameraController);
 ///   ...
 ///   await svc.dispose();
 class FaceDetectorService {
-  // Minimum face width ratio relative to image width.
-  // Faces smaller than this (too far from camera) are treated as not found.
+  // Faces smaller than this fraction of the frame width are ignored.
   static const double _minFaceWidthRatio = 0.15;
-  static const double _smileThresholdHappy = 0.7;
-  static const double _eyeThresholdSurprised = 0.8;
-  static const double _eyeThresholdScared = 0.3;
-  static const Duration _frameInterval = Duration(milliseconds: 200); // 5fps
 
-  late final FaceDetector _detector;
+  // Minimum top-1 probability to emit a non-unknown emotion.
+  static const double _minEmotionConfidence = 0.40;
+
+  static const Duration _frameInterval = Duration(milliseconds: 200); // 5 fps
+  static const int _inputSize = 48;
+  static const String _modelAsset = 'assets/model/fer_model.tflite';
+
+  // Must match the FER model's output layer order.
+  static const List<DetectedEmotion> _indexToEmotion = [
+    DetectedEmotion.angry,   // 0
+    DetectedEmotion.disgust, // 1
+    DetectedEmotion.fear,    // 2
+    DetectedEmotion.happy,   // 3
+    DetectedEmotion.sad,     // 4
+    DetectedEmotion.surprise, // 5
+  ];
+
+  late final FaceDetector _faceDetector;
+  Interpreter? _interpreter;
+
   Timer? _processingTimer;
   CameraController? _cameraController;
   bool _isProcessing = false;
@@ -67,13 +93,20 @@ class FaceDetectorService {
 
   Stream<FaceDetectionResult> get results => _resultController.stream;
 
-  void init() {
-    _detector = FaceDetector(
+  Future<void> init() async {
+    _faceDetector = FaceDetector(
       options: FaceDetectorOptions(
-        enableClassification: true, // enables smile + eye open probabilities
+        // Bounding box only — emotion classification is done by TFLite.
+        enableClassification: false,
         performanceMode: FaceDetectorMode.fast,
       ),
     );
+
+    try {
+      _interpreter = await Interpreter.fromAsset(_modelAsset);
+    } catch (e) {
+      debugPrint('[FaceDetectorService] TFLite load failed: $e');
+    }
   }
 
   void startProcessing(CameraController controller) {
@@ -90,76 +123,126 @@ class FaceDetectorService {
     if (_isProcessing) return;
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) return;
+    final interpreter = _interpreter;
+    if (interpreter == null) return;
 
     _isProcessing = true;
+    String? tempPath;
     try {
-      final image = await controller.takePicture();
-      final inputImage = InputImage.fromFilePath(image.path);
-      final faces = await _detector.processImage(inputImage);
+      final xFile = await controller.takePicture();
+      tempPath = xFile.path;
+
+      // ── Step 1: detect face bounding box ──────────────────────────────────
+      final faces = await _faceDetector
+          .processImage(InputImage.fromFilePath(tempPath));
 
       if (faces.isEmpty) {
         _resultController.add(FaceDetectionResult.noFace);
         return;
       }
 
-      // Use the face with the largest bounding box (closest to camera).
-      final face = faces.reduce((a, b) =>
-          a.boundingBox.width > b.boundingBox.width ? a : b);
+      // Largest bounding box = face closest to camera.
+      final face = faces.reduce(
+          (a, b) => a.boundingBox.width > b.boundingBox.width ? a : b);
 
-      // Minimum confidence gate — avoids false classifications on partial faces.
-      // ML Kit doesn't expose a direct "detection confidence" for face bounds,
-      // so we use a heuristic: if the bounding box is very small relative to
-      // image dimensions, treat it as low confidence.
-      final imageWidth = controller.value.previewSize?.width ?? 640;
+      final imageWidth = controller.value.previewSize?.width ?? 640.0;
       final faceWidthRatio = face.boundingBox.width / imageWidth;
       if (faceWidthRatio < _minFaceWidthRatio) {
-        // Face is too small / too far — treat as no face.
         _resultController.add(FaceDetectionResult.noFace);
         return;
       }
 
-      final smile = face.smilingProbability ?? 0.0;
-      final eyeOpen =
-          ((face.leftEyeOpenProbability ?? 0.0) +
-                  (face.rightEyeOpenProbability ?? 0.0)) /
-              2.0;
+      // ── Step 2: decode JPEG and crop face ─────────────────────────────────
+      final jpegBytes = File(tempPath).readAsBytesSync();
+      final decoded = img.decodeJpg(jpegBytes);
+      if (decoded == null) {
+        _resultController.add(FaceDetectionResult.noFace);
+        return;
+      }
 
-      final emotion = _classifyEmotion(smile, eyeOpen);
+      final bbox = face.boundingBox;
+      final left = bbox.left.toInt().clamp(0, decoded.width - 1);
+      final top = bbox.top.toInt().clamp(0, decoded.height - 1);
+      final cropW = bbox.width.toInt().clamp(1, decoded.width - left);
+      final cropH = bbox.height.toInt().clamp(1, decoded.height - top);
+
+      final faceCrop = img.copyCrop(
+        decoded,
+        x: left,
+        y: top,
+        width: cropW,
+        height: cropH,
+      );
+
+      // ── Step 3: resize to 48×48, normalise grayscale → [0, 1] ────────────
+      final resized = img.copyResize(
+        faceCrop,
+        width: _inputSize,
+        height: _inputSize,
+        interpolation: img.Interpolation.linear,
+      );
+
+      // Build input tensor shape [1][48][48][1].
+      final inputTensor = List.generate(
+        1,
+        (_) => List.generate(
+          _inputSize,
+          (y) => List.generate(
+            _inputSize,
+            (x) {
+              final pixel = resized.getPixel(x, y);
+              final gray = (0.299 * pixel.r.toDouble() +
+                      0.587 * pixel.g.toDouble() +
+                      0.114 * pixel.b.toDouble()) /
+                  255.0;
+              return [gray];
+            },
+          ),
+        ),
+      );
+
+      // ── Step 4: run TFLite inference ──────────────────────────────────────
+      // Output shape [1][6] — 6 softmax probabilities.
+      final outputTensor = [List<double>.filled(6, 0.0)];
+      interpreter.run(inputTensor, outputTensor);
+
+      final probs = List<double>.from(outputTensor[0]);
+
+      // ── Step 5: argmax + confidence gate ──────────────────────────────────
+      int maxIdx = 0;
+      for (int i = 1; i < probs.length; i++) {
+        if (probs[i] > probs[maxIdx]) maxIdx = i;
+      }
+
+      final emotion = (probs[maxIdx] >= _minEmotionConfidence &&
+              maxIdx < _indexToEmotion.length)
+          ? _indexToEmotion[maxIdx]
+          : DetectedEmotion.unknown;
 
       _resultController.add(FaceDetectionResult(
         faceFound: true,
         confidence: faceWidthRatio.clamp(0.0, 1.0),
         emotion: emotion,
-        smileProbability: smile,
-        eyeOpenProbability: eyeOpen,
+        probabilities: probs,
       ));
     } catch (e) {
       debugPrint('[FaceDetectorService] Frame error: $e');
       _resultController.add(FaceDetectionResult.noFace);
     } finally {
+      // Always delete the temp JPEG to avoid filling device storage.
+      if (tempPath != null) {
+        try {
+          File(tempPath).deleteSync();
+        } catch (_) {}
+      }
       _isProcessing = false;
     }
   }
 
-  /// Classifies emotion from ML Kit probabilities.
-  ///
-  /// Thresholds are intentionally wide (±0.2) because:
-  ///   1. Children exaggerate expressions more than adults.
-  ///   2. The game should feel responsive, not demanding.
-  DetectedEmotion _classifyEmotion(double smile, double eyeOpen) {
-    if (smile > _smileThresholdHappy) return DetectedEmotion.happy;
-    if (eyeOpen > _eyeThresholdSurprised && smile < 0.4) {
-      return DetectedEmotion.surprised;
-    }
-    if (eyeOpen < _eyeThresholdScared && smile < 0.3) {
-      return DetectedEmotion.scared;
-    }
-    return DetectedEmotion.unknown;
-  }
-
   Future<void> dispose() async {
     stopProcessing();
-    await _detector.close();
+    await _faceDetector.close();
+    _interpreter?.close();
     await _resultController.close();
   }
 }
