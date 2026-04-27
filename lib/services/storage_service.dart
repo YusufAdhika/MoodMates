@@ -127,6 +127,30 @@ class StorageService {
     return _prefs.remove(_kPin);
   }
 
+  // ── Social Situations Resume State ───────────────────────────────────────
+
+  static const _kSocialResume = 'social_situations_resume';
+
+  Future<void> saveSocialSituationsResume(
+      String profileId, Map<String, dynamic> state) async {
+    await _prefs.setString(
+        '${_kSocialResume}_$profileId', json.encode(state));
+  }
+
+  Map<String, dynamic>? loadSocialSituationsResume(String profileId) {
+    final raw = _prefs.getString('${_kSocialResume}_$profileId');
+    if (raw == null) return null;
+    try {
+      return json.decode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> clearSocialSituationsResume(String profileId) async {
+    await _prefs.remove('${_kSocialResume}_$profileId');
+  }
+
   // ── Schema migration ──────────────────────────────────────────────────────
 
   Future<void> _migrateIfNeeded() async {

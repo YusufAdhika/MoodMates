@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../models/game_progress.dart';
 import '../../providers/progress_provider.dart';
 import '../../services/audio_service.dart';
+import '../../services/storage_service.dart';
 
 // ─── Zone Design Tokens ───────────────────────────────────────────────────────
 
@@ -30,12 +32,18 @@ class _ThemeStyle {
 }
 
 const Map<String, _ThemeStyle> _themeStyles = {
-  'Berbagi & Giliran':   _ThemeStyle(Color(0xFFFFF8E7), Color(0xFFFF9A3C), Color(0xFFC85A00)),
-  'Empati & Kepedulian': _ThemeStyle(Color(0xFFE8F5E9), Color(0xFF4CAF6E), Color(0xFF1A5E36)),
-  'Regulasi Emosi':      _ThemeStyle(Color(0xFFF3E5F5), Color(0xFF9C27B0), Color(0xFF4A0072)),
-  'Komunikasi Asertif':  _ThemeStyle(Color(0xFFE3F2FD), Color(0xFF1976D2), Color(0xFF0D47A1)),
-  'Kontrol Diri':        _ThemeStyle(Color(0xFFE0F2F1), Color(0xFF009688), Color(0xFF004D40)),
-  'Resolusi Konflik':    _ThemeStyle(Color(0xFFFFEBEE), Color(0xFFE53935), Color(0xFFB71C1C)),
+  'Berbagi & Giliran':
+      _ThemeStyle(Color(0xFFFFF8E7), Color(0xFFFF9A3C), Color(0xFFC85A00)),
+  'Empati & Kepedulian':
+      _ThemeStyle(Color(0xFFE8F5E9), Color(0xFF4CAF6E), Color(0xFF1A5E36)),
+  'Regulasi Emosi':
+      _ThemeStyle(Color(0xFFF3E5F5), Color(0xFF9C27B0), Color(0xFF4A0072)),
+  'Komunikasi Asertif':
+      _ThemeStyle(Color(0xFFE3F2FD), Color(0xFF1976D2), Color(0xFF0D47A1)),
+  'Kontrol Diri':
+      _ThemeStyle(Color(0xFFE0F2F1), Color(0xFF009688), Color(0xFF004D40)),
+  'Resolusi Konflik':
+      _ThemeStyle(Color(0xFFFFEBEE), Color(0xFFE53935), Color(0xFFB71C1C)),
 };
 
 _ThemeStyle _styleOf(String theme) =>
@@ -44,10 +52,22 @@ _ThemeStyle _styleOf(String theme) =>
 
 // ─── Level Data ───────────────────────────────────────────────────────────────
 
+const _themeOrder = [
+  'Berbagi & Giliran',
+  'Empati & Kepedulian',
+  'Regulasi Emosi',
+  'Komunikasi Asertif',
+  'Kontrol Diri',
+  'Resolusi Konflik',
+];
+
+const int _totalLevels = 3;
+const int _questionsPerLevel = 6;
+
 const _levelGoals = {
-  1: 'Belajar berbagi\ndan peduli kepada teman 💚',
-  2: 'Belajar mengatur perasaan\ndan berbicara dengan baik 💬',
-  3: 'Belajar menaati aturan\ndan menyelesaikan masalah 🕊️',
+  1: 'Yuk mulai dengan 1 soal\ndari setiap tema 🌈',
+  2: 'Lanjut latihan dengan situasi baru\ndari semua tema 🚀',
+  3: 'Tantangan terakhir:\nsatu soal lagi dari semua tema 🏆',
 };
 
 // ─── Data Models ──────────────────────────────────────────────────────────────
@@ -98,561 +118,867 @@ class ThinkScenario {
   });
 
   ThinkChoice get correctChoice => choiceA.isCorrect ? choiceA : choiceB;
+
+  String get effectiveImagePath =>
+      imagePath ?? 'assets/images/scenarios/${id}_question.png';
+
+  String imagePathForChoice(ThinkChoice choice) {
+    final suffix = identical(choice, choiceA) ? 'a' : 'b';
+    return choice.imagePath ?? 'assets/images/scenarios/${id}_$suffix.png';
+  }
 }
 
 // ─── Scenario Bank (30 soal) ──────────────────────────────────────────────────
 
 const List<ThinkScenario> thinkScenarios = [
-
   // ── Level 1 · Berbagi & Giliran ───────────────────────────────────────────
 
   ThinkScenario(
-    id: 'sharing_1', level: 1, theme: 'Berbagi & Giliran',
+    id: 'sharing_1',
+    level: 1,
+    theme: 'Berbagi & Giliran',
     situationLabel: 'Pinjam Mainan',
-    situationNarration: 'Kamu sedang bermain dengan mainan kesayanganmu. Teman di sebelahmu ingin meminjamnya sebentar.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu sedang bermain dengan mainan kesayanganmu. Teman di sebelahmu ingin meminjamnya sebentar.',
+    question: 'Mainan kamu dipinjam teman',
     emoji: '🧸',
+    imagePath: 'assets/images/scenarios/question(1).png',
     choiceA: ThinkChoice(
-      label: 'Pinjamkan dan minta dikembalikan setelah selesai',
-      emoji: '🤝', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Itu pilihan yang baik. Meminjamkan mainan membuat teman merasa dihargai! 💚',
+      label: 'Pinjamkan, bilang "nanti balikin ya"',
+      emoji: '🤝',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Itu pilihan yang baik. Meminjamkan mainan membuat teman merasa dihargai! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Rebut kembali dan berkata tidak mau',
-      emoji: '😤', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Bagaimana perasaan temanmu kalau tidak dipinjami?',
+      label: 'Rebut mainannya dan bilang "tidak mau"',
+      emoji: '😤',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Bagaimana perasaan temanmu kalau tidak dipinjami?',
     ),
   ),
 
   ThinkScenario(
-    id: 'sharing_2', level: 1, theme: 'Berbagi & Giliran',
+    id: 'sharing_2',
+    level: 1,
+    theme: 'Berbagi & Giliran',
     situationLabel: 'Krayon Biru',
-    situationNarration: 'Kamu dan teman ingin menggunakan krayon biru yang sama untuk mewarnai gambar.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu dan teman ingin menggunakan krayon biru yang sama untuk mewarnai gambar.',
+    question: 'Kamu dan teman berebut krayon biru',
     emoji: '🖍️',
+    imagePath: 'assets/images/scenarios/question(2).png',
     choiceA: ThinkChoice(
-      label: 'Bergantian menggunakannya dengan adil',
-      emoji: '🔄', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus sekali! Bergantian adalah cara yang adil dan menyenangkan semua orang! 🌟',
+      label: 'Pakai bergantian',
+      emoji: '🔄',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus sekali! Bergantian adalah cara yang adil dan menyenangkan semua orang! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Rebut krayon agar kamu mewarnai duluan',
-      emoji: '😠', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 😊 Apa cara yang lebih adil agar kalian bisa sama-sama mewarnai?',
+      label: 'Rebut krayon dari tangan teman',
+      emoji: '😠',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 😊 Apa cara yang lebih adil agar kalian bisa sama-sama mewarnai?',
     ),
   ),
 
   ThinkScenario(
-    id: 'sharing_3', level: 1, theme: 'Berbagi & Giliran',
+    id: 'sharing_3',
+    level: 1,
+    theme: 'Berbagi & Giliran',
     situationLabel: 'Ayunan di Taman',
-    situationNarration: 'Saat bermain ayunan di taman, ada teman yang sudah menunggu lama ingin giliran naik.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Saat bermain ayunan di taman, ada teman yang sudah menunggu lama ingin giliran naik.',
+    question: 'Kamu main ayunan, teman menunggu',
     emoji: '🎠',
+    imagePath: 'assets/images/scenarios/question(3).png',
     choiceA: ThinkChoice(
-      label: 'Turun setelah selesai dan persilakan temanmu naik',
-      emoji: '😊', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Memberikan giliran kepada teman adalah tanda hati yang baik! ⭐',
+      label: 'Turun, kasih teman giliran',
+      emoji: '😊',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Memberikan giliran kepada teman adalah tanda hati yang baik! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Tetap main terus meski teman sudah menunggu',
-      emoji: '🙈', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Yuk coba bayangkan 🤔 Kalau kamu yang sudah menunggu lama, apa yang kamu rasakan?',
+      label: 'Tetap main ayunan dan tidak mau turun',
+      emoji: '🙈',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Yuk coba bayangkan 🤔 Kalau kamu yang sudah menunggu lama, apa yang kamu rasakan?',
     ),
   ),
 
   ThinkScenario(
-    id: 'sharing_4', level: 1, theme: 'Berbagi & Giliran',
+    id: 'sharing_4',
+    level: 1,
+    theme: 'Berbagi & Giliran',
     situationLabel: 'Kue Tersisa',
-    situationNarration: 'Ada sepotong kue tersisa di piring. Kamu ingin memakannya, tapi adikmu juga melihatnya.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Ada sepotong kue tersisa di piring. Kamu ingin memakannya, tapi adikmu juga melihatnya.',
+    question: 'Sisa kue tinggal satu',
     emoji: '🍰',
+    imagePath: 'assets/images/scenarios/question(4).png',
     choiceA: ThinkChoice(
-      label: 'Bagi kue menjadi dua agar bisa makan bersama',
-      emoji: '🤝', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Berbagi dengan adik adalah tanda kamu penyayang. Adikmu pasti sangat senang! 💚',
+      label: 'Bagi dua sama-sama',
+      emoji: '🤝',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Berbagi dengan adik adalah tanda kamu penyayang. Adikmu pasti sangat senang! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Langsung makan kue tanpa berbagi',
-      emoji: '😋', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Bagaimana perasaan adikmu kalau tidak kebagian?',
+      label: 'Makan kue sendiri sampai habis',
+      emoji: '😋',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Bagaimana perasaan adikmu kalau tidak kebagian?',
     ),
   ),
 
   ThinkScenario(
-    id: 'sharing_5', level: 1, theme: 'Berbagi & Giliran',
+    id: 'sharing_5',
+    level: 1,
+    theme: 'Berbagi & Giliran',
     situationLabel: 'Buku Bergambar',
-    situationNarration: 'Kamu sedang membaca buku bergambar favoritmu. Temanmu datang dan ingin membaca bersama.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu sedang membaca buku bergambar favoritmu. Temanmu datang dan ingin membaca bersama.',
+    question: 'Kamu membaca buku, teman datang',
     emoji: '📖',
+    imagePath: 'assets/images/scenarios/question(5).png',
     choiceA: ThinkChoice(
-      label: 'Ajak temanmu duduk dan baca bersama-sama',
-      emoji: '📚', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Membaca bersama teman bisa jadi lebih seru dan menyenangkan! 🌟',
+      label: 'Ajak baca bareng',
+      emoji: '📚',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Membaca bersama teman bisa jadi lebih seru dan menyenangkan! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Sembunyikan buku agar teman tidak ikut membaca',
-      emoji: '🙅', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba bayangkan 😊 Enak tidak kalau temanmu tidak mau membagi bukunya denganmu?',
+      label: 'Sembunyikan buku dari teman',
+      emoji: '🙅',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba bayangkan 😊 Enak tidak kalau temanmu tidak mau membagi bukunya denganmu?',
     ),
   ),
 
   // ── Level 1 · Empati & Kepedulian ─────────────────────────────────────────
 
   ThinkScenario(
-    id: 'empathy_1', level: 1, theme: 'Empati & Kepedulian',
+    id: 'empathy_1',
+    level: 1,
+    theme: 'Empati & Kepedulian',
     situationLabel: 'Teman Terjatuh',
-    situationNarration: 'Temanmu terjatuh di halaman sekolah dan lututnya terluka. Ia menangis kesakitan.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Temanmu terjatuh di halaman sekolah dan lututnya terluka. Ia menangis kesakitan.',
+    question: 'Temanmu jatuh',
     emoji: '🤕',
+    imagePath: 'assets/images/scenarios/question(6).png',
     choiceA: ThinkChoice(
-      label: 'Hampiri, tanya kabarnya, dan panggil bu guru',
-      emoji: '💚', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Itu pilihan yang baik. Membantu teman yang terluka adalah tanda kamu peduli! 💚',
+      label: 'Tolong dan panggil guru',
+      emoji: '💚',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Itu pilihan yang baik. Membantu teman yang terluka adalah tanda kamu peduli! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Tertawa melihatnya jatuh lalu lanjut bermain',
-      emoji: '😂', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 😊 Bagaimana perasaan temanmu kalau ditinggal saat sedang sakit?',
+      label: 'Tertawa saat teman jatuh',
+      emoji: '😂',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 😊 Bagaimana perasaan temanmu kalau ditinggal saat sedang sakit?',
     ),
   ),
 
   ThinkScenario(
-    id: 'empathy_2', level: 1, theme: 'Empati & Kepedulian',
+    id: 'empathy_2',
+    level: 1,
+    theme: 'Empati & Kepedulian',
     situationLabel: 'Teman Sedih Sendiri',
-    situationNarration: 'Temanmu terlihat sedih sendirian di pojok kelas karena tidak diajak bermain.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Temanmu terlihat sedih sendirian di pojok kelas karena tidak diajak bermain.',
+    question: 'Temanmu sendirian',
     emoji: '😢',
+    imagePath: 'assets/images/scenarios/question(7).png',
     choiceA: ThinkChoice(
-      label: 'Dekati dan ajak bermain bersama',
-      emoji: '🫂', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Luar biasa! Mengajak teman yang sedih bermain membuatnya tidak merasa sendirian lagi! 🌟',
+      label: 'Ajak ikut main',
+      emoji: '🫂',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Luar biasa! Mengajak teman yang sedih bermain membuatnya tidak merasa sendirian lagi! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Biarkan saja ia sendiri dan lanjutkan bermain',
-      emoji: '🙈', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba bayangkan kamu di posisi temanmu 🤔 Apa yang ingin kamu rasakan dari teman-temanmu?',
+      label: 'Membiarkan teman sendirian',
+      emoji: '🙈',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba bayangkan kamu di posisi temanmu 🤔 Apa yang ingin kamu rasakan dari teman-temanmu?',
     ),
   ),
 
   ThinkScenario(
-    id: 'empathy_3', level: 1, theme: 'Empati & Kepedulian',
+    id: 'empathy_3',
+    level: 1,
+    theme: 'Empati & Kepedulian',
     situationLabel: 'Gambar Teman Jatuh',
-    situationNarration: 'Kamu tidak sengaja menabrak dan menjatuhkan gambar teman hingga kotor.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu tidak sengaja menabrak dan menjatuhkan gambar teman hingga kotor.',
+    question: 'Kamu menjatuhkan gambar teman',
     emoji: '🎨',
+    imagePath: 'assets/images/scenarios/question(8).png',
     choiceA: ThinkChoice(
-      label: 'Minta maaf dengan tulus dan bantu membersihkan',
-      emoji: '🙏', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Meminta maaf dan membantu adalah tanda hati yang baik! 💚',
+      label: 'Bilang "maaf", lalu bantu',
+      emoji: '🙏',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Meminta maaf dan membantu adalah tanda hati yang baik! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Pura-pura tidak melihat dan langsung pergi',
-      emoji: '🏃', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 😊 Apa yang bisa kamu lakukan agar temanmu merasa lebih baik?',
+      label: 'Pergi tanpa minta maaf',
+      emoji: '🏃',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 😊 Apa yang bisa kamu lakukan agar temanmu merasa lebih baik?',
     ),
   ),
 
   ThinkScenario(
-    id: 'empathy_4', level: 1, theme: 'Empati & Kepedulian',
+    id: 'empathy_4',
+    level: 1,
+    theme: 'Empati & Kepedulian',
     situationLabel: 'Adik Menangis',
     situationNarration: 'Adikmu menangis karena mainan kesayangannya rusak.',
-    question: 'Apa yang kamu lakukan?',
+    question: 'Adikmu sedang sedih',
     emoji: '😭',
+    imagePath: 'assets/images/scenarios/question(9).png',
     choiceA: ThinkChoice(
-      label: 'Peluk adik dan temaninya agar tidak sedih sendiri',
-      emoji: '🫂', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Wah, kamu kakak yang baik! Menemani adik yang sedih membuatnya merasa lebih nyaman! 💚',
+      label: 'Peluk dan temani',
+      emoji: '🫂',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Wah, kamu kakak yang baik! Menemani adik yang sedih membuatnya merasa lebih nyaman! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Bilang sudah diam, itu cuma mainan',
-      emoji: '😑', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 🤔 Bagaimana perasaan adik kalau tidak ditemani saat sedih?',
+      label: 'Membiarkan adik menangis sendirian',
+      emoji: '😑',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 🤔 Bagaimana perasaan adik kalau tidak ditemani saat sedih?',
     ),
   ),
 
   ThinkScenario(
-    id: 'empathy_5', level: 1, theme: 'Empati & Kepedulian',
+    id: 'empathy_5',
+    level: 1,
+    theme: 'Empati & Kepedulian',
     situationLabel: 'Teman Baru Bingung',
-    situationNarration: 'Temanmu baru pindah sekolah dan terlihat bingung tidak tahu harus ke mana.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Temanmu baru pindah sekolah dan terlihat bingung tidak tahu harus ke mana.',
+    question: 'Teman baru terlihat bingung',
     emoji: '🏫',
+    imagePath: 'assets/images/scenarios/question(10).png',
     choiceA: ThinkChoice(
-      label: 'Hampiri dan tawarkan bantuan antar ke kelas',
-      emoji: '🤝', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Menyambut teman baru membuat ia merasa senang dan tidak kesepian! 🌟',
+      label: 'Ajak dan bantu',
+      emoji: '🤝',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Menyambut teman baru membuat ia merasa senang dan tidak kesepian! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Acuhkan karena kamu tidak mengenalnya',
-      emoji: '🙄', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, bayangkan kamu jadi teman baru itu 😊 Apa yang ingin kamu rasakan dari teman-teman di sekolah baru?',
+      label: 'Mengabaikan teman baru',
+      emoji: '🙄',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, bayangkan kamu jadi teman baru itu 😊 Apa yang ingin kamu rasakan dari teman-teman di sekolah baru?',
     ),
   ),
 
   // ── Level 2 · Regulasi Emosi ──────────────────────────────────────────────
 
   ThinkScenario(
-    id: 'emoregulation_1', level: 2, theme: 'Regulasi Emosi',
+    id: 'emoregulation_1',
+    level: 2,
+    theme: 'Regulasi Emosi',
     situationLabel: 'Kalah Balapan',
-    situationNarration: 'Kamu kalah dalam permainan balap mobil dan merasa sangat kesal.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu kalah dalam permainan balap mobil dan merasa sangat kesal.',
+    question: 'Kamu kalah lomba mainan',
     emoji: '🏎️',
+    imagePath: 'assets/images/scenarios/question(11).png',
     choiceA: ThinkChoice(
-      label: 'Tarik napas dan ucapkan selamat kepada temanmu',
-      emoji: '😌', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Itu pilihan yang baik. Menerima kekalahan dengan lapang dada adalah tanda kamu kuat! ⭐',
+      label: 'Tarik napas, bilang "selamat ya"',
+      emoji: '😌',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Itu pilihan yang baik. Menerima kekalahan dengan lapang dada adalah tanda kamu kuat! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Lempar mobil-mobilan ke lantai karena kesal',
-      emoji: '😡', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba tarik napas dulu ya 😊 Apa yang bisa kamu lakukan agar perasaan kesalmu berkurang?',
+      label: 'Lempar mainan karena kesal',
+      emoji: '😡',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba tarik napas dulu ya 😊 Apa yang bisa kamu lakukan agar perasaan kesalmu berkurang?',
     ),
   ),
 
   ThinkScenario(
-    id: 'emoregulation_2', level: 2, theme: 'Regulasi Emosi',
+    id: 'emoregulation_2',
+    level: 2,
+    theme: 'Regulasi Emosi',
     situationLabel: 'Menunggu Mainan Robot',
-    situationNarration: 'Kamu ingin bermain dengan mainan robot, tapi kakakmu bilang kamu harus menunggu sebentar.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu ingin bermain dengan mainan robot, tapi kakakmu bilang kamu harus menunggu sebentar.',
+    question: 'Kamu diminta menunggu giliran',
     emoji: '🤖',
+    imagePath: 'assets/images/scenarios/question(12).png',
     choiceA: ThinkChoice(
-      label: 'Bilang iya dan cari kegiatan lain sambil menunggu',
-      emoji: '😊', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Bersabar dan mencari kegiatan lain saat menunggu adalah tanda kamu bijak! 💚',
+      label: 'Bilang "oke", tunggu sambil main lain',
+      emoji: '😊',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Bersabar dan mencari kegiatan lain saat menunggu adalah tanda kamu bijak! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Menangis keras-keras dan terus merengek',
-      emoji: '😭', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Kegiatan seru apa yang bisa kamu lakukan sambil menunggu giliran?',
+      label: 'Nangis keras dan marah-marah',
+      emoji: '😭',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Kegiatan seru apa yang bisa kamu lakukan sambil menunggu giliran?',
     ),
   ),
 
   ThinkScenario(
-    id: 'emoregulation_3', level: 2, theme: 'Regulasi Emosi',
+    id: 'emoregulation_3',
+    level: 2,
+    theme: 'Regulasi Emosi',
     situationLabel: 'Gambar Rusak Kena Air',
-    situationNarration: 'Teman tidak sengaja menumpahkan air ke gambar yang sudah kamu buat dengan susah payah.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Teman tidak sengaja menumpahkan air ke gambar yang sudah kamu buat dengan susah payah.',
+    question: 'Gambarmu rusak kena air',
     emoji: '💦',
+    imagePath: 'assets/images/scenarios/question(13).png',
     choiceA: ThinkChoice(
-      label: 'Tarik napas, bilang tidak apa-apa, dan buat ulang bersama',
-      emoji: '😌', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Memaafkan teman yang tidak sengaja berbuat salah adalah tanda hati yang besar! 💚',
+      label: 'Bilang "tidak apa-apa", buat lagi',
+      emoji: '😌',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Memaafkan teman yang tidak sengaja berbuat salah adalah tanda hati yang besar! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Berteriak marah dan mendorong teman',
-      emoji: '😡', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 😊 Teman tidak sengaja. Apa cara yang lebih baik untuk mengungkapkan perasaanmu?',
+      label: 'Kesal lalu mendorong teman',
+      emoji: '😡',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 😊 Teman tidak sengaja. Apa cara yang lebih baik untuk mengungkapkan perasaanmu?',
     ),
   ),
 
   ThinkScenario(
-    id: 'emoregulation_4', level: 2, theme: 'Regulasi Emosi',
+    id: 'emoregulation_4',
+    level: 2,
+    theme: 'Regulasi Emosi',
     situationLabel: 'Tidak Bisa Beli Es Krim',
-    situationNarration: 'Kamu sangat ingin membeli es krim, tapi ibu bilang hari ini tidak bisa.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu sangat ingin membeli es krim, tapi ibu bilang hari ini tidak bisa.',
+    question: 'Kamu tidak boleh beli es krim',
     emoji: '🍦',
+    imagePath: 'assets/images/scenarios/question(14).png',
     choiceA: ThinkChoice(
-      label: 'Terima keputusan ibu dan bilang mungkin lain kali',
-      emoji: '😊', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Menerima keputusan orang tua dengan lapang dada adalah tanda kamu sudah besar! ⭐',
+      label: 'Bilang "ya sudah, nanti saja"',
+      emoji: '😊',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Menerima keputusan orang tua dengan lapang dada adalah tanda kamu sudah besar! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Ngambek, banting tas, dan tidak mau bicara',
-      emoji: '😤', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba tarik napas dulu ya 🤔 Cara apa yang lebih baik untuk menyampaikan kekecewaanmu?',
+      label: 'Ngambek dan tidak mau bicara',
+      emoji: '😤',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba tarik napas dulu ya 🤔 Cara apa yang lebih baik untuk menyampaikan kekecewaanmu?',
     ),
   ),
 
   ThinkScenario(
-    id: 'emoregulation_5', level: 2, theme: 'Regulasi Emosi',
+    id: 'emoregulation_5',
+    level: 2,
+    theme: 'Regulasi Emosi',
     situationLabel: 'Bangunan Balok Roboh',
-    situationNarration: 'Saat bermain balok, bangunan yang kamu buat tiba-tiba roboh sendiri.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Saat bermain balok, bangunan yang kamu buat tiba-tiba roboh sendiri.',
+    question: 'Balok yang kamu susun roboh',
     emoji: '🧱',
+    imagePath: 'assets/images/scenarios/question(15).png',
     choiceA: ThinkChoice(
-      label: 'Ambil napas, tersenyum, dan mulai membangun kembali',
-      emoji: '😄', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus sekali! Mencoba lagi setelah gagal adalah tanda kamu pemberani dan tangguh! 🌟',
+      label: 'Coba susun lagi',
+      emoji: '😄',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus sekali! Mencoba lagi setelah gagal adalah tanda kamu pemberani dan tangguh! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Menendang balok-balok karena frustrasi',
-      emoji: '😡', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba tarik napas dulu ya 😊 Apa yang bisa kamu lakukan agar merasa lebih tenang sebelum mencoba lagi?',
+      label: 'Tendang balok sampai berantakan',
+      emoji: '😡',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba tarik napas dulu ya 😊 Apa yang bisa kamu lakukan agar merasa lebih tenang sebelum mencoba lagi?',
     ),
   ),
 
   // ── Level 2 · Komunikasi Asertif ──────────────────────────────────────────
 
   ThinkScenario(
-    id: 'assertive_1', level: 2, theme: 'Komunikasi Asertif',
+    id: 'assertive_1',
+    level: 2,
+    theme: 'Komunikasi Asertif',
     situationLabel: 'Pinjam Pensil Warna',
-    situationNarration: 'Kamu ingin meminjam pensil warna milik temanmu untuk menyelesaikan gambarmu.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu ingin meminjam pensil warna milik temanmu untuk menyelesaikan gambarmu.',
+    question: 'Kamu ingin pinjam pensil teman',
     emoji: '✏️',
+    imagePath: 'assets/images/scenarios/question(16).png',
     choiceA: ThinkChoice(
-      label: 'Bertanya sopan: "Boleh aku pinjam pensil warnamu?"',
-      emoji: '🙏', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Bertanya dengan sopan adalah cara yang baik untuk meminta sesuatu! 💚',
+      label: 'Minta izin dulu',
+      emoji: '🙏',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Bertanya dengan sopan adalah cara yang baik untuk meminta sesuatu! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Langsung ambil tanpa bertanya dulu',
-      emoji: '🖐️', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 🤔 Bagaimana perasaan temanmu kalau barangnya diambil tanpa permisi?',
+      label: 'Ambil pensil tanpa izin',
+      emoji: '🖐️',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 🤔 Bagaimana perasaan temanmu kalau barangnya diambil tanpa permisi?',
     ),
   ),
 
   ThinkScenario(
-    id: 'assertive_2', level: 2, theme: 'Komunikasi Asertif',
+    id: 'assertive_2',
+    level: 2,
+    theme: 'Komunikasi Asertif',
     situationLabel: 'Tidak Mau Main di Luar',
-    situationNarration: 'Temanmu mengajak bermain di luar, tapi kamu sedang tidak mau bermain di sana.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Temanmu mengajak bermain di luar, tapi kamu sedang tidak mau bermain di sana.',
+    question: 'Teman mengajak main, tapi kamu tidak mau',
     emoji: '🌳',
+    imagePath: 'assets/images/scenarios/question(17).png',
     choiceA: ThinkChoice(
-      label: 'Tolak dengan sopan: "Terima kasih, aku mau di sini saja ya"',
-      emoji: '😊', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Menolak dengan sopan sambil berterima kasih adalah cara komunikasi yang baik! 🌟',
+      label: 'Bilang baik-baik "aku tidak mau"',
+      emoji: '😊',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Menolak dengan sopan sambil berterima kasih adalah cara komunikasi yang baik! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Diam saja atau pergi tanpa berkata apa-apa',
-      emoji: '🚶', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 😊 Bagaimana cara yang lebih sopan untuk memberitahu temanmu?',
+      label: 'Diam lalu pergi tanpa bilang apa-apa',
+      emoji: '🚶',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 😊 Bagaimana cara yang lebih sopan untuk memberitahu temanmu?',
     ),
   ),
 
   ThinkScenario(
-    id: 'assertive_3', level: 2, theme: 'Komunikasi Asertif',
+    id: 'assertive_3',
+    level: 2,
+    theme: 'Komunikasi Asertif',
     situationLabel: 'Tidak Mengerti Origami',
-    situationNarration: 'Kamu tidak mengerti cara melipat origami yang diajarkan bu guru.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu tidak mengerti cara melipat origami yang diajarkan bu guru.',
+    question: 'Kamu tidak bisa membuat origami',
     emoji: '📝',
+    imagePath: 'assets/images/scenarios/question(18).png',
     choiceA: ThinkChoice(
-      label: 'Angkat tangan dan tanya guru dengan sopan',
-      emoji: '✋', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Berani bertanya kepada guru adalah tanda kamu mau belajar dan pintar! ⭐',
+      label: 'Angkat tangan, tanya guru',
+      emoji: '✋',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Berani bertanya kepada guru adalah tanda kamu mau belajar dan pintar! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Diam-diam menyalin teman tanpa mau bertanya',
-      emoji: '🙈', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Apa yang kamu pelajari kalau hanya menyalin tanpa mengerti?',
+      label: 'Meniru pekerjaan teman diam-diam',
+      emoji: '🙈',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Apa yang kamu pelajari kalau hanya menyalin tanpa mengerti?',
     ),
   ),
 
   ThinkScenario(
-    id: 'assertive_4', level: 2, theme: 'Komunikasi Asertif',
+    id: 'assertive_4',
+    level: 2,
+    theme: 'Komunikasi Asertif',
     situationLabel: 'Barang Terus Disentuh',
-    situationNarration: 'Seorang teman terus-terusan menyentuh barang-barangmu meski kamu sudah terlihat tidak nyaman.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Seorang teman terus-terusan menyentuh barang-barangmu meski kamu sudah terlihat tidak nyaman.',
+    question: 'Teman memegang barangmu',
     emoji: '😤',
+    imagePath: 'assets/images/scenarios/question(19).png',
     choiceA: ThinkChoice(
-      label: 'Katakan dengan tenang: "Tolong jangan pegang barangku ya"',
-      emoji: '💬', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Berbicara dengan tenang untuk menyampaikan perasaanmu adalah cara yang tepat! 💚',
+      label: 'Bilang pelan "jangan ya, aku tidak suka"',
+      emoji: '💬',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Berbicara dengan tenang untuk menyampaikan perasaanmu adalah cara yang tepat! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Langsung dorong tangan temanmu karena kesal',
-      emoji: '😠', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 😊 Cara apa yang lebih baik untuk memberitahu temanmu bahwa kamu tidak suka?',
+      label: 'Mendorong tangan teman dengan kasar',
+      emoji: '😠',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 😊 Cara apa yang lebih baik untuk memberitahu temanmu bahwa kamu tidak suka?',
     ),
   ),
 
   ThinkScenario(
-    id: 'assertive_5', level: 2, theme: 'Komunikasi Asertif',
+    id: 'assertive_5',
+    level: 2,
+    theme: 'Komunikasi Asertif',
     situationLabel: 'Bantu Ibu Belanja',
-    situationNarration: 'Kamu ingin membantu ibu membawakan belanjaan yang berat.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu ingin membantu ibu membawakan belanjaan yang berat.',
+    question: 'Kamu ingin membantu ibu',
     emoji: '🛍️',
+    imagePath: 'assets/images/scenarios/question(20).png',
     choiceA: ThinkChoice(
-      label: 'Tawarkan bantuan: "Bu, boleh aku bantu bawakan tasnya?"',
-      emoji: '🙋', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Wah, kamu anak yang baik! Menawarkan bantuan dengan sopan adalah tanda kamu peduli! 🌟',
+      label: 'Bilang "aku bantu ya"',
+      emoji: '🙋',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Wah, kamu anak yang baik! Menawarkan bantuan dengan sopan adalah tanda kamu peduli! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Langsung tarik tas dari tangan ibu tanpa bilang apa-apa',
-      emoji: '😬', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Bagaimana cara yang lebih sopan untuk menawarkan bantuan?',
+      label: 'Menarik tas belanja dari tangan ibu',
+      emoji: '😬',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Bagaimana cara yang lebih sopan untuk menawarkan bantuan?',
     ),
   ),
 
   // ── Level 3 · Kontrol Diri ────────────────────────────────────────────────
 
   ThinkScenario(
-    id: 'selfcontrol_1', level: 3, theme: 'Kontrol Diri',
+    id: 'selfcontrol_1',
+    level: 3,
+    theme: 'Kontrol Diri',
     situationLabel: 'Rapikan Mainan',
-    situationNarration: 'Bu guru meminta semua anak merapikan mainan sebelum waktu makan siang tiba.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Bu guru meminta semua anak merapikan mainan sebelum waktu makan siang tiba.',
+    question: 'Kamu diminta merapikan mainan',
     emoji: '🧹',
+    imagePath: 'assets/images/scenarios/question(21).png',
     choiceA: ThinkChoice(
-      label: 'Langsung rapikan mainanmu dan bantu teman',
-      emoji: '✅', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Itu pilihan yang baik. Mengikuti aturan dan membantu teman adalah hal yang luar biasa! ⭐',
+      label: 'Rapikan mainan, bantu teman',
+      emoji: '✅',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Itu pilihan yang baik. Mengikuti aturan dan membantu teman adalah hal yang luar biasa! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Terus bermain dan pura-pura tidak dengar',
-      emoji: '🙈', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Apa yang terjadi kalau semua anak tidak merapikan mainan bersama?',
+      label: 'Tetap bermain dan tidak merapikan',
+      emoji: '🙈',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Apa yang terjadi kalau semua anak tidak merapikan mainan bersama?',
     ),
   ),
 
   ThinkScenario(
-    id: 'selfcontrol_2', level: 3, theme: 'Kontrol Diri',
+    id: 'selfcontrol_2',
+    level: 3,
+    theme: 'Kontrol Diri',
     situationLabel: 'Antre Cuci Tangan',
-    situationNarration: 'Saat antre mencuci tangan, kamu melihat ada celah di barisan untuk menyalip.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Saat antre mencuci tangan, kamu melihat ada celah di barisan untuk menyalip.',
+    question: 'Kamu sedang antre cuci tangan',
     emoji: '🚰',
+    imagePath: 'assets/images/scenarios/question(22).png',
     choiceA: ThinkChoice(
-      label: 'Tetap di tempat antrian dan sabar menunggu',
-      emoji: '🧍', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Menunggu dengan sabar di antrian adalah tanda kamu jujur dan adil! 💚',
+      label: 'Tunggu giliran dengan sabar',
+      emoji: '🧍',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Menunggu dengan sabar di antrian adalah tanda kamu jujur dan adil! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Menyalip ke depan agar lebih cepat',
-      emoji: '🏃', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba bayangkan ya 😊 Bagaimana perasaan teman yang sudah lama mengantri kalau kamu menyalip?',
+      label: 'Menyelinap ke depan antrean',
+      emoji: '🏃',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba bayangkan ya 😊 Bagaimana perasaan teman yang sudah lama mengantri kalau kamu menyalip?',
     ),
   ),
 
   ThinkScenario(
-    id: 'selfcontrol_3', level: 3, theme: 'Kontrol Diri',
+    id: 'selfcontrol_3',
+    level: 3,
+    theme: 'Kontrol Diri',
     situationLabel: 'Guru Sedang Menjelaskan',
-    situationNarration: 'Bu guru sedang menjelaskan sesuatu di depan kelas. Temanmu mengajakmu berbicara.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Bu guru sedang menjelaskan sesuatu di depan kelas. Temanmu mengajakmu berbicara.',
+    question: 'Guru sedang menjelaskan',
     emoji: '🗣️',
+    imagePath: 'assets/images/scenarios/question(23).png',
     choiceA: ThinkChoice(
-      label: 'Bisikkan "nanti saja ya" dan fokus ke guru',
-      emoji: '🤫', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Mendengarkan guru dengan fokus adalah tanda kamu menghormati bu guru! 🌟',
+      label: 'Dengarkan guru, bilang "nanti ya"',
+      emoji: '🤫',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Mendengarkan guru dengan fokus adalah tanda kamu menghormati bu guru! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Berbicara keras sampai mengganggu kelas',
-      emoji: '📢', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Apa yang terjadi dengan pelajaran kalau semua anak berbicara saat guru menjelaskan?',
+      label: 'Mengobrol keras saat guru menjelaskan',
+      emoji: '📢',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Apa yang terjadi dengan pelajaran kalau semua anak berbicara saat guru menjelaskan?',
     ),
   ),
 
   ThinkScenario(
-    id: 'selfcontrol_4', level: 3, theme: 'Kontrol Diri',
+    id: 'selfcontrol_4',
+    level: 3,
+    theme: 'Kontrol Diri',
     situationLabel: 'Buang Sampah',
-    situationNarration: 'Selesai makan, kamu diminta membuang bungkus makananmu ke tempat sampah.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Selesai makan, kamu diminta membuang bungkus makananmu ke tempat sampah.',
+    question: 'Kamu selesai makan',
     emoji: '🗑️',
+    imagePath: 'assets/images/scenarios/question(24).png',
     choiceA: ThinkChoice(
-      label: 'Buang bungkus ke tempat sampah dengan rapi',
-      emoji: '♻️', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Membuang sampah pada tempatnya adalah tanggung jawab yang membuat lingkungan bersih! ⭐',
+      label: 'Buang ke tempat sampah',
+      emoji: '♻️',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Membuang sampah pada tempatnya adalah tanggung jawab yang membuat lingkungan bersih! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Tinggalkan di meja karena malas berjalan',
-      emoji: '😴', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba bayangkan ya 😊 Bagaimana kalau semua orang meninggalkan sampahnya sembarangan?',
+      label: 'Meninggalkan sampah di meja',
+      emoji: '😴',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba bayangkan ya 😊 Bagaimana kalau semua orang meninggalkan sampahnya sembarangan?',
     ),
   ),
 
   ThinkScenario(
-    id: 'selfcontrol_5', level: 3, theme: 'Kontrol Diri',
+    id: 'selfcontrol_5',
+    level: 3,
+    theme: 'Kontrol Diri',
     situationLabel: 'Tidak Boleh Berlari',
-    situationNarration: 'Saat bermain di dalam kelas, ada aturan tidak boleh berlari.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Saat bermain di dalam kelas, ada aturan tidak boleh berlari.',
+    question: 'Kamu bermain di dalam kelas',
     emoji: '🚶',
+    imagePath: 'assets/images/scenarios/question(25).png',
     choiceA: ThinkChoice(
-      label: 'Berjalan pelan dan ingatkan teman yang berlari',
-      emoji: '🚶', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Mematuhi aturan dan mengingatkan teman dengan sopan adalah tanda kamu bertanggung jawab! 💚',
+      label: 'Jalan pelan',
+      emoji: '🚶',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Mematuhi aturan dan mengingatkan teman dengan sopan adalah tanda kamu bertanggung jawab! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Berlari-lari karena merasa aturannya tidak penting',
-      emoji: '🏃', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 🤔 Kenapa ya aturan tidak boleh berlari di kelas itu ada?',
+      label: 'Berlari di dalam kelas',
+      emoji: '🏃',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 🤔 Kenapa ya aturan tidak boleh berlari di kelas itu ada?',
     ),
   ),
 
   // ── Level 3 · Resolusi Konflik ────────────────────────────────────────────
 
   ThinkScenario(
-    id: 'conflict_1', level: 3, theme: 'Resolusi Konflik',
+    id: 'conflict_1',
+    level: 3,
+    theme: 'Resolusi Konflik',
     situationLabel: 'Berebut Boneka',
-    situationNarration: 'Kamu dan teman menginginkan boneka yang sama untuk dimainkan. Hanya ada satu.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu dan teman menginginkan boneka yang sama untuk dimainkan. Hanya ada satu.',
+    question: 'Kamu dan teman berebut boneka',
     emoji: '🪆',
+    imagePath: 'assets/images/scenarios/question(26).png',
     choiceA: ThinkChoice(
-      label: 'Usul bergantian: "Kamu dulu 5 menit, lalu aku ya?"',
-      emoji: '🤝', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Pintar sekali! Mengusulkan giliran adalah cara yang adil dan damai! 🕊️',
+      label: 'Bergantian main',
+      emoji: '🤝',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Pintar sekali! Mengusulkan giliran adalah cara yang adil dan damai! 🕊️',
     ),
     choiceB: ThinkChoice(
-      label: 'Tarik boneka dari tangan teman',
-      emoji: '😤', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 😊 Apa cara yang lebih baik agar kalian bisa sama-sama bermain?',
+      label: 'Menarik boneka dari tangan teman',
+      emoji: '😤',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 😊 Apa cara yang lebih baik agar kalian bisa sama-sama bermain?',
     ),
   ),
 
   ThinkScenario(
-    id: 'conflict_2', level: 3, theme: 'Resolusi Konflik',
+    id: 'conflict_2',
+    level: 3,
+    theme: 'Resolusi Konflik',
     situationLabel: 'Cat Tumpah ke Baju',
-    situationNarration: 'Temanmu tidak sengaja menumpahkan cat ke bajumu saat kalian melukis bersama.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Temanmu tidak sengaja menumpahkan cat ke bajumu saat kalian melukis bersama.',
+    question: 'Bajumu terkena cat teman',
     emoji: '🖌️',
+    imagePath: 'assets/images/scenarios/question(27).png',
     choiceA: ThinkChoice(
-      label: 'Katakan tidak apa-apa dan lanjutkan melukis',
-      emoji: '😊', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Memaafkan teman yang tidak sengaja adalah tanda kamu punya hati yang besar! 💚',
+      label: 'Bilang "tidak apa-apa"',
+      emoji: '😊',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Memaafkan teman yang tidak sengaja adalah tanda kamu punya hati yang besar! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Balas menumpahkan cat ke bajunya',
-      emoji: '😠', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 🤔 Teman tidak sengaja melakukannya. Apa yang terjadi kalau kamu membalasnya?',
+      label: 'Sengaja menumpahkan cat ke teman',
+      emoji: '😠',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 🤔 Teman tidak sengaja melakukannya. Apa yang terjadi kalau kamu membalasnya?',
     ),
   ),
 
   ThinkScenario(
-    id: 'conflict_3', level: 3, theme: 'Resolusi Konflik',
+    id: 'conflict_3',
+    level: 3,
+    theme: 'Resolusi Konflik',
     situationLabel: 'Berebut Jadi Pemimpin',
-    situationNarration: 'Kamu dan teman berselisih tentang siapa yang akan menjadi pemimpin dalam permainan.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Kamu dan teman berselisih tentang siapa yang akan menjadi pemimpin dalam permainan.',
+    question: 'Kamu dan teman berebut jadi pemimpin',
     emoji: '👑',
+    imagePath: 'assets/images/scenarios/question(28).png',
     choiceA: ThinkChoice(
-      label: 'Usulkan hom-pim-pa atau bergantian setiap ronde',
-      emoji: '🤝', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Keren! Mengusulkan cara yang adil agar semua bisa mendapat giliran adalah hal yang bijaksana! ⭐',
+      label: 'Main hompimpa atau gantian',
+      emoji: '🤝',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Keren! Mengusulkan cara yang adil agar semua bisa mendapat giliran adalah hal yang bijaksana! ⭐',
     ),
     choiceB: ThinkChoice(
-      label: 'Ngambek dan ancam tidak mau bermain',
-      emoji: '😤', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba pikir lagi ya 😊 Cara apa yang bisa membuat semua teman senang dan permainan tetap berlanjut?',
+      label: 'Ngambek dan tidak mau ikut main',
+      emoji: '😤',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba pikir lagi ya 😊 Cara apa yang bisa membuat semua teman senang dan permainan tetap berlanjut?',
     ),
   ),
 
   ThinkScenario(
-    id: 'conflict_4', level: 3, theme: 'Resolusi Konflik',
+    id: 'conflict_4',
+    level: 3,
+    theme: 'Resolusi Konflik',
     situationLabel: 'Kata-Kata Menyakitkan',
-    situationNarration: 'Temanmu berkata kata-kata yang membuatmu tersinggung dan sedih.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Temanmu berkata kata-kata yang membuatmu tersinggung dan sedih.',
+    question: 'Kamu disakiti kata teman',
     emoji: '😔',
+    imagePath: 'assets/images/scenarios/question(29).png',
     choiceA: ThinkChoice(
-      label: 'Katakan dengan tenang: "Kata-katamu membuatku sedih"',
-      emoji: '💬', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Bagus! Mengungkapkan perasaanmu dengan tenang adalah cara yang tepat dan berani! 💚',
+      label: 'Bilang "aku sedih kalau begitu"',
+      emoji: '💬',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Bagus! Mengungkapkan perasaanmu dengan tenang adalah cara yang tepat dan berani! 💚',
     ),
     choiceB: ThinkChoice(
-      label: 'Balas dengan kata-kata yang lebih menyakitkan',
-      emoji: '😈', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba lihat lagi ya 🤔 Kalau kata-kata menyakitkan dibalas, apa yang akan terjadi selanjutnya?',
+      label: 'Membalas dengan kata-kata kasar',
+      emoji: '😈',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba lihat lagi ya 🤔 Kalau kata-kata menyakitkan dibalas, apa yang akan terjadi selanjutnya?',
     ),
   ),
 
   ThinkScenario(
-    id: 'conflict_5', level: 3, theme: 'Resolusi Konflik',
+    id: 'conflict_5',
+    level: 3,
+    theme: 'Resolusi Konflik',
     situationLabel: 'Dituduh Mengambil',
-    situationNarration: 'Teman menuduh kamu mengambil penghapusnya, padahal kamu tidak melakukannya.',
-    question: 'Apa yang kamu lakukan?',
+    situationNarration:
+        'Teman menuduh kamu mengambil penghapusnya, padahal kamu tidak melakukannya.',
+    question: 'Kamu dituduh mengambil barang',
     emoji: '🔍',
+    imagePath: 'assets/images/scenarios/question(30).png',
     choiceA: ThinkChoice(
-      label: 'Jelaskan dengan tenang dan ajak cari bersama',
-      emoji: '🔍', cardColor: Color(0xFFC8E6C9), isCorrect: true,
-      feedback: 'Hebat! Menjelaskan dengan tenang dan mengajak mencari bersama adalah cara yang bijak dan jujur! 🌟',
+      label: 'Bilang "bukan aku, ayo cari sama-sama"',
+      emoji: '🔍',
+      cardColor: Color(0xFFC8E6C9),
+      isCorrect: true,
+      feedback:
+          'Hebat! Menjelaskan dengan tenang dan mengajak mencari bersama adalah cara yang bijak dan jujur! 🌟',
     ),
     choiceB: ThinkChoice(
-      label: 'Balik berteriak marah dan menuduh balik',
-      emoji: '😡', cardColor: Color(0xFFFFCDD2), isCorrect: false,
-      feedback: 'Hmm, coba tarik napas dulu ya 😊 Cara apa yang lebih tenang untuk membuktikan bahwa kamu tidak mengambilnya?',
+      label: 'Berteriak dan menuduh balik',
+      emoji: '😡',
+      cardColor: Color(0xFFFFCDD2),
+      isCorrect: false,
+      feedback:
+          'Hmm, coba tarik napas dulu ya 😊 Cara apa yang lebih tenang untuk membuktikan bahwa kamu tidak mengambilnya?',
     ),
   ),
 ];
@@ -683,6 +1009,12 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   ThinkScenario get _current =>
       _levelScenarios[_currentLevel]![_questionInLevel];
+  int get _questionsThisLevel =>
+      _levelScenarios[_currentLevel]?.length ?? _questionsPerLevel;
+  int get _passScoreThisLevel => (_questionsThisLevel * 2 / 3).ceil();
+  bool get _isLastQuestionInLevel =>
+      _questionInLevel >= _questionsThisLevel - 1;
+  int get _totalQuestionsInRun => _questionsPerLevel * _totalLevels;
 
   // Urutan tampil jawaban — diacak tiap soal agar posisi benar/salah berubah
   List<ThinkChoice> _orderedChoices = [];
@@ -698,7 +1030,6 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   late Animation<Offset> _cardSlide;
   late Animation<Offset> _choiceASlide;
   late Animation<Offset> _choiceBSlide;
-  late Animation<Offset> _feedbackSlide;
   late Animation<double> _raccooFloat;
   late Animation<double> _shakeAnimation;
   late Animation<double> _celebrationScale;
@@ -710,34 +1041,46 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
     super.initState();
     _buildLevelScenarios();
 
-    _cardSlideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _cardSlideController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
     _cardSlide = Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _cardSlideController, curve: const Cubic(0.34, 1.56, 0.64, 1)));
+        .animate(CurvedAnimation(
+            parent: _cardSlideController,
+            curve: const Cubic(0.34, 1.56, 0.64, 1)));
 
-    _choiceEntranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _choiceASlide = Tween<Offset>(begin: const Offset(-0.5, 0), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _choiceEntranceController,
-            curve: const Interval(0.0, 0.7, curve: Cubic(0.34, 1.56, 0.64, 1))));
+    _choiceEntranceController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
+    _choiceASlide = Tween<Offset>(
+            begin: const Offset(-0.5, 0), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _choiceEntranceController,
+            curve:
+                const Interval(0.0, 0.7, curve: Cubic(0.34, 1.56, 0.64, 1))));
     _choiceBSlide = Tween<Offset>(begin: const Offset(0.5, 0), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _choiceEntranceController,
-            curve: const Interval(0.15, 0.85, curve: Cubic(0.34, 1.56, 0.64, 1))));
+        .animate(CurvedAnimation(
+            parent: _choiceEntranceController,
+            curve:
+                const Interval(0.15, 0.85, curve: Cubic(0.34, 1.56, 0.64, 1))));
 
-    _feedbackController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
-    _feedbackSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _feedbackController, curve: const Cubic(0.34, 1.56, 0.64, 1)));
+    _feedbackController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
 
-    _raccooController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+    _raccooController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1100))
       ..repeat(reverse: true);
-    _raccooFloat = Tween<double>(begin: -6, end: 6)
-        .animate(CurvedAnimation(parent: _raccooController, curve: Curves.easeInOut));
+    _raccooFloat = Tween<double>(begin: -6, end: 6).animate(
+        CurvedAnimation(parent: _raccooController, curve: Curves.easeInOut));
 
-    _shakeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _shakeAnimation = Tween<double>(begin: 0, end: 1)
-        .animate(CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn));
+    _shakeController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
+    _shakeAnimation = Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn));
 
-    _celebrationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
-    _celebrationScale = Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(parent: _celebrationController, curve: const Cubic(0.34, 1.56, 0.64, 1)));
+    _celebrationController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 650));
+    _celebrationScale = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(
+        parent: _celebrationController,
+        curve: const Cubic(0.34, 1.56, 0.64, 1)));
 
     // Inisialisasi urutan awal (Level Intro belum menampilkan soal, tapi perlu non-empty)
     _orderedChoices = [
@@ -747,7 +1090,113 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AudioService>().play(AudioAsset.instructionSocialSituations);
+      _checkResumeState();
     });
+  }
+
+  // ── Resume state ──────────────────────────────────────────────────────────
+
+  Future<void> _checkResumeState() async {
+    if (!mounted) return;
+    final storage = context.read<StorageService>();
+    final profileId = storage.activeProfileId;
+    if (profileId == null) return;
+
+    final saved = storage.loadSocialSituationsResume(profileId);
+    if (saved == null) return;
+
+    final resume = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Lanjutkan permainan?',
+            style: GoogleFonts.baloo2(
+                fontSize: 20, fontWeight: FontWeight.w700, color: _textDark)),
+        content: Text(
+          'Kamu sudah bermain sampai Level ${saved['currentLevel']} soal ${(saved['questionInLevel'] as int) + 1}. Lanjutkan dari sini?',
+          style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Mulai Baru',
+                style: GoogleFonts.dmSans(color: _textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Ya, Lanjutkan',
+                style: GoogleFonts.dmSans(
+                    color: _zoneColor, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (resume == true) {
+      _restoreFromSaved(saved);
+    } else {
+      await storage.clearSocialSituationsResume(profileId);
+    }
+  }
+
+  void _restoreFromSaved(Map<String, dynamic> saved) {
+    final scenarioIds = saved['scenarioIds'] as Map<String, dynamic>;
+    final restored = <int, List<ThinkScenario>>{};
+    for (int l = 1; l <= _totalLevels; l++) {
+      final ids = (scenarioIds['$l'] as List<dynamic>).cast<String>();
+      restored[l] = ids
+          .map((id) => thinkScenarios.firstWhere(
+                (s) => s.id == id,
+                orElse: () => thinkScenarios.first,
+              ))
+          .toList();
+    }
+    setState(() {
+      _levelScenarios = restored;
+      _currentLevel = saved['currentLevel'] as int;
+      _questionInLevel = saved['questionInLevel'] as int;
+      _levelCorrect = saved['levelCorrect'] as int;
+      _totalCorrect = saved['totalCorrect'] as int;
+      _phase = _Phase.levelIntro;
+    });
+  }
+
+  Future<void> _saveResumeState() async {
+    if (!mounted) return;
+    final storage = context.read<StorageService>();
+    final profileId = storage.activeProfileId;
+    if (profileId == null) return;
+
+    // Tidak simpan jika di phase levelIntro level 1 soal 0 (baru mulai)
+    final isAtStart = _currentLevel == 1 &&
+        _questionInLevel == 0 &&
+        _levelCorrect == 0 &&
+        _totalCorrect == 0;
+    if (isAtStart) return;
+
+    final scenarioIds = <String, List<String>>{};
+    for (int l = 1; l <= _totalLevels; l++) {
+      scenarioIds['$l'] = _levelScenarios[l]!.map((s) => s.id).toList();
+    }
+
+    await storage.saveSocialSituationsResume(profileId, {
+      'currentLevel': _currentLevel,
+      'questionInLevel': _questionInLevel,
+      'levelCorrect': _levelCorrect,
+      'totalCorrect': _totalCorrect,
+      'scenarioIds': scenarioIds,
+    });
+  }
+
+  Future<void> _clearResumeState() async {
+    if (!mounted) return;
+    final storage = context.read<StorageService>();
+    final profileId = storage.activeProfileId;
+    if (profileId == null) return;
+    await storage.clearSocialSituationsResume(profileId);
   }
 
   @override
@@ -765,17 +1214,44 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   void _buildLevelScenarios([int? retryLevel]) {
     final rng = math.Random();
+    final byTheme = <String, List<ThinkScenario>>{
+      for (final theme in _themeOrder)
+        theme: thinkScenarios.where((s) => s.theme == theme).toList()
+          ..shuffle(rng),
+    };
+
     if (retryLevel != null) {
-      final pool = thinkScenarios.where((s) => s.level == retryLevel).toList()..shuffle(rng);
-      _levelScenarios[retryLevel] = pool.take(3).toList();
+      final usedInOtherLevels = <String>{
+        for (final entry in _levelScenarios.entries)
+          if (entry.key != retryLevel) ...entry.value.map((s) => s.id),
+      };
+      final previousLevelIds =
+          _levelScenarios[retryLevel]!.map((s) => s.id).toSet();
+
+      final refreshed = <ThinkScenario>[
+        for (final theme in _themeOrder)
+          () {
+            final candidates = byTheme[theme]!
+                .where((s) => !usedInOtherLevels.contains(s.id))
+                .where((s) => !previousLevelIds.contains(s.id))
+                .toList();
+            final pool = candidates.isNotEmpty
+                ? candidates
+                : byTheme[theme]!
+                    .where((s) => !usedInOtherLevels.contains(s.id))
+                    .toList();
+            pool.shuffle(rng);
+            return pool.first;
+          }(),
+      ]..shuffle(rng);
+
+      _levelScenarios[retryLevel] = refreshed;
     } else {
-      final byLevel = <int, List<ThinkScenario>>{};
-      for (final s in thinkScenarios) {
-        byLevel.putIfAbsent(s.level, () => []).add(s);
-      }
       _levelScenarios = {
-        for (int l = 1; l <= 3; l++)
-          l: (List.of(byLevel[l]!)..shuffle(rng)).take(3).toList(),
+        for (int level = 1; level <= _totalLevels; level++)
+          level: [
+            for (final theme in _themeOrder) byTheme[theme]![level - 1],
+          ]..shuffle(rng),
       };
     }
   }
@@ -783,7 +1259,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   // ── Game flow ─────────────────────────────────────────────────────────────
 
   void _startQuestion() {
-    final choices = [_current.choiceA, _current.choiceB]..shuffle(math.Random());
+    final choices = [_current.choiceA, _current.choiceB]
+      ..shuffle(math.Random());
     setState(() {
       _phase = _Phase.choosing;
       _selectedChoice = null;
@@ -807,7 +1284,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         _totalCorrect++;
       }
     });
-    audioService.play(choice.isCorrect ? AudioAsset.correct : AudioAsset.incorrect);
+    audioService
+        .play(choice.isCorrect ? AudioAsset.correct : AudioAsset.incorrect);
     if (!choice.isCorrect) {
       await _shakeController.forward();
       _shakeController.reset();
@@ -816,11 +1294,28 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
       gameId: GameProgress.gameSocialSituations,
       wasCorrect: choice.isCorrect,
     );
-    if (mounted) _feedbackController.forward();
+    if (!mounted) return;
+    await _showFeedbackDialog(choice);
+  }
+
+  Future<void> _showFeedbackDialog(ThinkChoice choice) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => _FeedbackDialog(
+        choice: choice,
+        isLastQuestion: _isLastQuestionInLevel,
+        onNext: () {
+          Navigator.pop(ctx);
+          _onNext();
+        },
+      ),
+    );
   }
 
   void _onNext() {
-    if (_questionInLevel < 2) {
+    if (!_isLastQuestionInLevel) {
       setState(() => _questionInLevel++);
       _startQuestion();
     } else {
@@ -830,7 +1325,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   }
 
   void _proceedToNextLevel() {
-    if (_currentLevel < 3) {
+    if (_currentLevel < _totalLevels) {
       setState(() {
         _currentLevel++;
         _questionInLevel = 0;
@@ -839,15 +1334,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
       });
       _celebrationController.reset();
     } else {
+      _clearResumeState();
       _celebrationController.forward(from: 0);
       setState(() => _phase = _Phase.done);
     }
   }
 
   void _retryLevel() {
+    final previousLevelCorrect = _levelCorrect;
     _buildLevelScenarios(_currentLevel);
     setState(() {
       _questionInLevel = 0;
+      _totalCorrect = math.max(0, _totalCorrect - previousLevelCorrect);
       _levelCorrect = 0;
       _phase = _Phase.levelIntro;
     });
@@ -857,27 +1355,38 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   // ── Exit dialog ───────────────────────────────────────────────────────────
 
   Future<bool> _confirmExit() async {
+    final isMidGame = _phase == _Phase.choosing || _phase == _Phase.revealed;
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Selesai bermain?',
-            style: GoogleFonts.baloo2(fontSize: 20, fontWeight: FontWeight.w700, color: _textDark)),
-        content: Text('Progresmu hari ini akan tersimpan!',
-            style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted)),
+            style: GoogleFonts.baloo2(
+                fontSize: 20, fontWeight: FontWeight.w700, color: _textDark)),
+        content: Text(
+          isMidGame
+              ? 'Permainanmu akan disimpan. Kamu bisa lanjutkan nanti!'
+              : 'Progresmu hari ini akan tersimpan!',
+          style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Lanjut Bermain', style: GoogleFonts.dmSans(color: _zoneColor)),
+            child: Text('Lanjut Bermain',
+                style: GoogleFonts.dmSans(color: _zoneColor)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('Ya, Keluar',
-                style: GoogleFonts.dmSans(color: _errorRed, fontWeight: FontWeight.w600)),
+                style: GoogleFonts.dmSans(
+                    color: _errorRed, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
+    if (result == true && isMidGame) {
+      await _saveResumeState();
+    }
     return result ?? false;
   }
 
@@ -899,11 +1408,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         backgroundColor: _zoneBg,
         body: SafeArea(
           child: switch (_phase) {
-            _Phase.levelIntro   => _buildLevelIntro(),
-            _Phase.choosing ||
-            _Phase.revealed     => _buildGame(),
-            _Phase.levelResult  => _buildLevelResult(),
-            _Phase.done         => _buildDoneScreen(),
+            _Phase.levelIntro => _buildLevelIntro(),
+            _Phase.choosing || _Phase.revealed => _buildGame(),
+            _Phase.levelResult => _buildLevelResult(),
+            _Phase.done => _buildDoneScreen(),
           },
         ),
       ),
@@ -924,13 +1432,12 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           // Level path (1 → 2 → 3)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
+            children: List.generate(_totalLevels * 2 - 1, (i) {
               if (i.isOdd) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(Icons.arrow_forward_ios_rounded,
-                      size: 14,
-                      color: _textMuted.withValues(alpha: 0.4)),
+                      size: 14, color: _textMuted.withValues(alpha: 0.4)),
                 );
               }
               final level = i ~/ 2 + 1;
@@ -948,17 +1455,24 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                           : _zoneColor.withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                   boxShadow: isActive
-                      ? [BoxShadow(color: _zoneColor.withValues(alpha: 0.45), offset: const Offset(0, 4), blurRadius: 8)]
+                      ? [
+                          BoxShadow(
+                              color: _zoneColor.withValues(alpha: 0.45),
+                              offset: const Offset(0, 4),
+                              blurRadius: 8)
+                        ]
                       : null,
                 ),
                 child: Center(
                   child: isDone
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                      ? const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 22)
                       : Text('$level',
                           style: GoogleFonts.baloo2(
                             fontSize: isActive ? 22 : 18,
                             fontWeight: FontWeight.w800,
-                            color: isActive || isDone ? Colors.white : _zoneColor,
+                            color:
+                                isActive || isDone ? Colors.white : _zoneColor,
                           )),
                 ),
               );
@@ -966,17 +1480,22 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           ),
 
           const SizedBox(height: 4),
-          Text('Level $_currentLevel dari 3',
-              style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: _textMuted)),
+          Text('Level $_currentLevel dari $_totalLevels',
+              style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _textMuted)),
 
           const Spacer(),
 
           // Raccoo bobbing
           AnimatedBuilder(
             animation: _raccooFloat,
-            builder: (_, child) => Transform.translate(offset: Offset(0, _raccooFloat.value), child: child),
+            builder: (_, child) => Transform.translate(
+                offset: Offset(0, _raccooFloat.value), child: child),
             child: Container(
-              width: 148, height: 148,
+              width: 148,
+              height: 148,
               decoration: BoxDecoration(
                 color: _zoneColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
@@ -997,19 +1516,25 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
-                BoxShadow(color: _zoneShadow, offset: Offset(4, 6), blurRadius: 0),
+                BoxShadow(
+                    color: _zoneShadow, offset: Offset(4, 6), blurRadius: 0),
               ],
             ),
             child: Column(
               children: [
                 Text('🎯 Tujuan belajar kita:',
                     style: GoogleFonts.dmSans(
-                        fontSize: 14, fontWeight: FontWeight.w600, color: _textMuted)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _textMuted)),
                 const SizedBox(height: 8),
                 Text(goal,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.baloo2(
-                        fontSize: 20, fontWeight: FontWeight.w700, color: _textDark, height: 1.4)),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: _textDark,
+                        height: 1.4)),
               ],
             ),
           ),
@@ -1020,9 +1545,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              3,
+              _questionsThisLevel,
               (i) => Container(
-                width: 10, height: 10,
+                width: 10,
+                height: 10,
                 margin: const EdgeInsets.symmetric(horizontal: 5),
                 decoration: BoxDecoration(
                   color: _zoneColor.withValues(alpha: 0.28),
@@ -1063,7 +1589,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         _buildTopBar(),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1076,22 +1602,29 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 const SizedBox(height: 12),
 
                 // Raccoo question
-                _QuestionBubble(question: card.question),
+                _QuestionBubble(question: card.question, theme: card.theme),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                Text('Pilih jawabanmu:',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 15, fontWeight: FontWeight.w600,
-                        color: _textMuted, letterSpacing: 0.4)),
+                Text(
+                  'Pilih jawaban yang paling tepat',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _textMuted,
+                    letterSpacing: 0.2,
+                  ),
+                ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
                 // Choice 0 (posisi diacak tiap soal)
                 SlideTransition(
                   position: _choiceASlide,
                   child: _ChoiceCard(
                     choice: _orderedChoices[0],
+                    imagePath: card.imagePathForChoice(_orderedChoices[0]),
+                    optionLabel: 'A',
                     state: _choiceCardState(_orderedChoices[0]),
                     onTap: () => _onChoiceTap(_orderedChoices[0]),
                     shakeAnimation: _orderedChoices[0] == _selectedChoice &&
@@ -1108,6 +1641,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   position: _choiceBSlide,
                   child: _ChoiceCard(
                     choice: _orderedChoices[1],
+                    imagePath: card.imagePathForChoice(_orderedChoices[1]),
+                    optionLabel: 'B',
                     state: _choiceCardState(_orderedChoices[1]),
                     onTap: () => _onChoiceTap(_orderedChoices[1]),
                     shakeAnimation: _orderedChoices[1] == _selectedChoice &&
@@ -1117,24 +1652,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   ),
                 ),
 
-                // Feedback
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: _phase == _Phase.revealed
-                      ? Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: SlideTransition(
-                            position: _feedbackSlide,
-                            child: _FeedbackPanel(
-                              choice: _selectedChoice!,
-                              onNext: _onNext,
-                              isLastQuestion: _questionInLevel >= 2,
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -1157,13 +1675,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               if (ok && mounted) context.pop();
             },
             child: Container(
-              width: 52, height: 52,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: const [BoxShadow(color: _zoneShadow, offset: Offset(2, 3), blurRadius: 0)],
+                boxShadow: const [
+                  BoxShadow(
+                      color: _zoneShadow, offset: Offset(2, 3), blurRadius: 0)
+                ],
               ),
-              child: const Icon(Icons.arrow_back_rounded, color: _textDark, size: 26),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: _textDark, size: 26),
             ),
           ),
 
@@ -1181,13 +1704,17 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 7, height: 7,
-                  decoration: BoxDecoration(color: style.accent, shape: BoxShape.circle),
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                      color: style.accent, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 5),
                 Text(_current.theme,
                     style: GoogleFonts.dmSans(
-                        fontSize: 12, fontWeight: FontWeight.w700, color: style.accent)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: style.accent)),
               ],
             ),
           ),
@@ -1196,12 +1723,13 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
           // Q progress dots
           Row(
-            children: List.generate(3, (i) {
+            children: List.generate(_questionsThisLevel, (i) {
               final isDone = i < _questionInLevel;
               final isActive = i == _questionInLevel;
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: isActive ? 22 : 8, height: 8,
+                width: isActive ? 22 : 8,
+                height: 8,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
                   color: isDone
@@ -1216,9 +1744,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           ),
 
           const SizedBox(width: 8),
-          Text('${_questionInLevel + 1}/3',
+          Text('${_questionInLevel + 1}/$_questionsThisLevel',
               style: GoogleFonts.baloo2(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: _textMuted)),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _textMuted)),
         ],
       ),
     );
@@ -1229,7 +1759,9 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   _ChoiceState _choiceCardState(ThinkChoice choice) {
     if (_phase == _Phase.choosing) return _ChoiceState.idle;
     if (_selectedChoice == choice) {
-      return choice.isCorrect ? _ChoiceState.selectedCorrect : _ChoiceState.selectedWrong;
+      return choice.isCorrect
+          ? _ChoiceState.selectedCorrect
+          : _ChoiceState.selectedWrong;
     }
     return _ChoiceState.dimmed;
   }
@@ -1237,9 +1769,16 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   // ── Level Result ──────────────────────────────────────────────────────────
 
   Widget _buildLevelResult() {
-    final passed = _levelCorrect >= 2;
-    final isPerfect = _levelCorrect == 3;
-    final isLastLevel = _currentLevel == 3;
+    final passed = _levelCorrect >= _passScoreThisLevel;
+    final isPerfect = _levelCorrect == _questionsThisLevel;
+    final isLastLevel = _currentLevel == _totalLevels;
+    final levelStars = _levelCorrect == _questionsThisLevel
+        ? 3
+        : _levelCorrect >= _passScoreThisLevel
+            ? 2
+            : _levelCorrect > 0
+                ? 1
+                : 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1255,14 +1794,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: (passed ? _zoneShadow : const Color(0xFFC85A00)).withValues(alpha: 0.5),
-                  offset: const Offset(3, 4), blurRadius: 0,
+                  color: (passed ? _zoneShadow : const Color(0xFFC85A00))
+                      .withValues(alpha: 0.5),
+                  offset: const Offset(3, 4),
+                  blurRadius: 0,
                 ),
               ],
             ),
             child: Text('Level $_currentLevel Selesai!',
                 style: GoogleFonts.baloo2(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
           ),
 
           const SizedBox(height: 28),
@@ -1272,12 +1815,14 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             scale: _celebrationScale,
             child: AnimatedBuilder(
               animation: _raccooFloat,
-              builder: (_, child) =>
-                  Transform.translate(offset: Offset(0, _raccooFloat.value), child: child),
+              builder: (_, child) => Transform.translate(
+                  offset: Offset(0, _raccooFloat.value), child: child),
               child: Container(
-                width: 140, height: 140,
+                width: 140,
+                height: 140,
                 decoration: BoxDecoration(
-                  color: (passed ? _zoneColor : const Color(0xFFFF9A3C)).withValues(alpha: 0.12),
+                  color: (passed ? _zoneColor : const Color(0xFFFF9A3C))
+                      .withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -1295,18 +1840,24 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 ? (isPerfect ? 'Sempurna! 🏆' : 'Bagus! 🎉')
                 : 'Hampir! Coba lagi ya! 💪',
             style: GoogleFonts.baloo2(
-                fontSize: 32, fontWeight: FontWeight.w800, color: _textDark, height: 1.1),
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: _textDark,
+                height: 1.1),
           ),
 
           const SizedBox(height: 8),
 
           Text(
             passed
-                ? 'Kamu menjawab $_levelCorrect dari 3 soal dengan benar!'
-                : 'Kamu menjawab $_levelCorrect dari 3 soal benar.\nRaccoo percaya kamu pasti bisa!',
+                ? 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal dengan benar!'
+                : 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal benar.\nRaccoo percaya kamu pasti bisa!',
             textAlign: TextAlign.center,
             style: GoogleFonts.baloo2(
-                fontSize: 17, fontWeight: FontWeight.w600, color: _textMuted, height: 1.4),
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: _textMuted,
+                height: 1.4),
           ),
 
           const SizedBox(height: 24),
@@ -1315,7 +1866,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(3, (i) {
-              final earned = i < _levelCorrect;
+              final earned = i < levelStars;
               return TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
                 duration: Duration(milliseconds: 400 + i * 150),
@@ -1324,7 +1875,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   scale: v,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(Icons.star_rounded, size: 56,
+                    child: Icon(Icons.star_rounded,
+                        size: 56,
                         color: earned ? _gold : _gold.withValues(alpha: 0.22)),
                   ),
                 ),
@@ -1342,15 +1894,21 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                     style: GoogleFonts.dmSans(fontSize: 15, color: _textMuted)),
               ),
             _ThinkButton(
-              label: isLastLevel ? 'Lihat Hasil Akhir 🏆' : 'Lanjut ke Level ${_currentLevel + 1} →',
-              color: _zoneColor, textColor: Colors.white,
-              icon: isLastLevel ? Icons.emoji_events_rounded : Icons.arrow_forward_rounded,
+              label: isLastLevel
+                  ? 'Lihat Hasil Akhir 🏆'
+                  : 'Lanjut ke Level ${_currentLevel + 1} →',
+              color: _zoneColor,
+              textColor: Colors.white,
+              icon: isLastLevel
+                  ? Icons.emoji_events_rounded
+                  : Icons.arrow_forward_rounded,
               onTap: _proceedToNextLevel,
             ),
           ] else ...[
             _ThinkButton(
               label: 'Coba Level $_currentLevel Lagi',
-              color: const Color(0xFFFF9A3C), textColor: Colors.white,
+              color: const Color(0xFFFF9A3C),
+              textColor: Colors.white,
               icon: Icons.replay_rounded,
               onTap: _retryLevel,
             ),
@@ -1365,8 +1923,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   // ── Done ──────────────────────────────────────────────────────────────────
 
   Widget _buildDoneScreen() {
-    const total = 9;
-    final stars = _totalCorrect >= total ? 3 : _totalCorrect >= 6 ? 2 : 1;
+    final stars = _totalCorrect >= _totalQuestionsInRun
+        ? 3
+        : _totalCorrect >= (_totalQuestionsInRun * 2 / 3).ceil()
+            ? 2
+            : 1;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1378,15 +1939,17 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             scale: _celebrationScale,
             child: AnimatedBuilder(
               animation: _raccooFloat,
-              builder: (_, child) =>
-                  Transform.translate(offset: Offset(0, _raccooFloat.value), child: child),
+              builder: (_, child) => Transform.translate(
+                  offset: Offset(0, _raccooFloat.value), child: child),
               child: Container(
-                width: 160, height: 160,
+                width: 160,
+                height: 160,
                 decoration: BoxDecoration(
                   color: _zoneColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Center(child: Text('🦝', style: TextStyle(fontSize: 90))),
+                child: const Center(
+                    child: Text('🦝', style: TextStyle(fontSize: 90))),
               ),
             ),
           ),
@@ -1395,14 +1958,21 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
           Text(stars == 3 ? 'Sempurna! 🏆' : 'Selesai! 🎉',
               style: GoogleFonts.baloo2(
-                  fontSize: 36, fontWeight: FontWeight.w800, color: _textDark, height: 1.1)),
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  color: _textDark,
+                  height: 1.1)),
 
           const SizedBox(height: 8),
 
-          Text('Kamu sudah menyelesaikan\nsemua 3 level Raccoo Think!',
+          Text(
+              'Kamu sudah menyelesaikan\nsemua $_totalLevels level Raccoo Think!',
               textAlign: TextAlign.center,
               style: GoogleFonts.baloo2(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: _textMuted, height: 1.4)),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _textMuted,
+                  height: 1.4)),
 
           const SizedBox(height: 20),
 
@@ -1412,16 +1982,31 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: const [BoxShadow(color: _zoneShadow, offset: Offset(4, 6), blurRadius: 0)],
+              boxShadow: const [
+                BoxShadow(
+                    color: _zoneShadow, offset: Offset(4, 6), blurRadius: 0)
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _ScoreStat(label: 'Betul', value: '$_totalCorrect', color: _successGreen, icon: Icons.check_circle_rounded),
+                _ScoreStat(
+                    label: 'Betul',
+                    value: '$_totalCorrect',
+                    color: _successGreen,
+                    icon: Icons.check_circle_rounded),
                 Container(width: 1, height: 40, color: const Color(0xFFE0E0E0)),
-                _ScoreStat(label: 'Total Soal', value: '$total', color: _zoneColor, icon: Icons.forum_rounded),
+                _ScoreStat(
+                    label: 'Total Soal',
+                    value: '$_totalQuestionsInRun',
+                    color: _zoneColor,
+                    icon: Icons.forum_rounded),
                 Container(width: 1, height: 40, color: const Color(0xFFE0E0E0)),
-                _ScoreStat(label: 'Bintang', value: '$stars', color: _gold, icon: Icons.star_rounded),
+                _ScoreStat(
+                    label: 'Bintang',
+                    value: '$stars',
+                    color: _gold,
+                    icon: Icons.star_rounded),
               ],
             ),
           ),
@@ -1439,8 +2024,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   scale: v,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(Icons.star_rounded, size: 48,
-                        color: i < stars ? _gold : _gold.withValues(alpha: 0.22)),
+                    child: Icon(Icons.star_rounded,
+                        size: 48,
+                        color:
+                            i < stars ? _gold : _gold.withValues(alpha: 0.22)),
                   ),
                 ),
               );
@@ -1452,9 +2039,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           if (stars < 3)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text('Tidak apa-apa! Setiap latihan membuat kamu makin pintar! 💪',
+              child: Text(
+                  'Tidak apa-apa! Setiap latihan membuat kamu makin pintar! 💪',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(fontSize: 16, color: _textMuted, height: 1.5)),
+                  style: GoogleFonts.dmSans(
+                      fontSize: 16, color: _textMuted, height: 1.5)),
             ),
 
           Row(
@@ -1462,7 +2051,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               Expanded(
                 child: _ThinkButton(
                   label: 'Main Lagi',
-                  color: Colors.white, textColor: _zoneColor,
+                  color: Colors.white,
+                  textColor: _zoneColor,
                   icon: Icons.replay_rounded,
                   onTap: () {
                     _buildLevelScenarios();
@@ -1481,7 +2071,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               Expanded(
                 child: _ThinkButton(
                   label: 'Selesai',
-                  color: _zoneColor, textColor: Colors.white,
+                  color: _zoneColor,
+                  textColor: Colors.white,
                   icon: Icons.home_rounded,
                   onTap: () => context.pop(),
                 ),
@@ -1504,73 +2095,98 @@ class _SituationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = _styleOf(scenario.theme);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: style.bg,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: style.shadow.withValues(alpha: 0.40), offset: const Offset(4, 7), blurRadius: 0),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            offset: const Offset(0, 10),
+            blurRadius: 24,
+          ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      padding: const EdgeInsets.all(14),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Theme chip
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: style.accent.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: style.accent.withValues(alpha: 0.28)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7, height: 7,
-                    decoration: BoxDecoration(color: style.accent, shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(scenario.theme,
-                      style: GoogleFonts.dmSans(
-                          fontSize: 12, fontWeight: FontWeight.w700, color: style.accent)),
-                ],
-              ),
+          // Row(
+          //   children: [
+          //     Container(
+          //       padding:
+          //           const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          //       decoration: BoxDecoration(
+          //         color: style.bg,
+          //         borderRadius: BorderRadius.circular(999),
+          //       ),
+          //       child: Text(
+          //         scenario.theme,
+          //         style: GoogleFonts.dmSans(
+          //           fontSize: 12,
+          //           fontWeight: FontWeight.w700,
+          //           color: style.accent,
+          //         ),
+          //       ),
+          //     ),
+          //   ],
+          // ),
+          const SizedBox(height: 12),
+          _LandscapeAssetImage(
+            assetPath: scenario.effectiveImagePath,
+            fallbackEmoji: scenario.emoji,
+            fallbackLabel: scenario.situationLabel,
+            height: 214,
+            borderRadius: 18,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            scenario.situationLabel,
+            style: GoogleFonts.baloo2(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: _textDark,
+              height: 1.05,
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          // Gambar situasi (jika tersedia) atau emoji fallback
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: scenario.imagePath != null
-                ? Image.asset(
-                    scenario.imagePath!,
-                    width: double.infinity,
-                    height: 160,
-                    fit: BoxFit.cover,
-                  )
-                : Text(scenario.emoji, style: const TextStyle(fontSize: 72)),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Situation label
-          Text(scenario.situationLabel,
-              style: GoogleFonts.baloo2(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: style.accent)),
-
           const SizedBox(height: 8),
-
-          // Narration
-          Text(scenario.situationNarration,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(fontSize: 16, height: 1.55, color: _textDark)),
+          Text(
+            scenario.situationNarration,
+            style: GoogleFonts.dmSans(
+              fontSize: 15.5,
+              height: 1.55,
+              color: _textMuted,
+            ),
+          ),
+          // const SizedBox(height: 10),
+          // Container(
+          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          //   decoration: BoxDecoration(
+          //     color: style.bg.withValues(alpha: 0.72),
+          //     borderRadius: BorderRadius.circular(16),
+          //   ),
+          //   child: Row(
+          //     children: [
+          //       Text(
+          //         scenario.emoji,
+          //         style: const TextStyle(fontSize: 20),
+          //       ),
+          //       const SizedBox(width: 8),
+          //       Expanded(
+          //         child: Text(
+          //           'Perhatikan situasinya baik-baik sebelum memilih jawaban.',
+          //           style: GoogleFonts.dmSans(
+          //             fontSize: 13,
+          //             fontWeight: FontWeight.w500,
+          //             color: _textDark,
+          //             height: 1.35,
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
@@ -1579,37 +2195,66 @@ class _SituationCard extends StatelessWidget {
 
 class _QuestionBubble extends StatelessWidget {
   final String question;
+  final String theme;
 
-  const _QuestionBubble({required this.question});
+  const _QuestionBubble({
+    required this.question,
+    required this.theme,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final style = _styleOf(theme);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: style.bg.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(color: _zoneShadow, offset: Offset(3, 5), blurRadius: 0)],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: _zoneColor.withValues(alpha: 0.12),
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: const Center(child: Text('🦝', style: TextStyle(fontSize: 24))),
+            child: const Center(
+              child: Text(
+                '🦝',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
           ),
-
-          const SizedBox(width: 12),
-
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(question,
-                style: GoogleFonts.baloo2(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: _textDark, height: 1.3)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pertanyaan',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: style.accent,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  question,
+                  style: GoogleFonts.baloo2(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: _textDark,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1623,12 +2268,16 @@ enum _ChoiceState { idle, selectedCorrect, selectedWrong, dimmed }
 
 class _ChoiceCard extends StatelessWidget {
   final ThinkChoice choice;
+  final String imagePath;
+  final String optionLabel;
   final _ChoiceState state;
   final VoidCallback onTap;
   final Animation<double>? shakeAnimation;
 
   const _ChoiceCard({
     required this.choice,
+    required this.imagePath,
+    required this.optionLabel,
     required this.state,
     required this.onTap,
     this.shakeAnimation,
@@ -1636,82 +2285,99 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSelected = state == _ChoiceState.selectedCorrect ||
+        state == _ChoiceState.selectedWrong;
+    final cardBg = switch (state) {
+      _ChoiceState.selectedCorrect => const Color(0xFFF5FBF5),
+      _ChoiceState.selectedWrong => const Color(0xFFFFF8F1),
+      _ => Colors.white,
+    };
     final borderColor = switch (state) {
-      _ChoiceState.selectedCorrect => _successGreen,
-      _ChoiceState.selectedWrong   => _errorRed,
-      _                            => Colors.transparent,
+      _ChoiceState.selectedCorrect => _successGreen.withValues(alpha: 0.18),
+      _ChoiceState.selectedWrong =>
+        const Color(0xFFFF9A3C).withValues(alpha: 0.22),
+      _ => Colors.black.withValues(alpha: 0.06),
     };
-    final shadowColor = switch (state) {
-      _ChoiceState.selectedCorrect => _successGreen.withValues(alpha: 0.45),
-      _ChoiceState.selectedWrong   => _errorRed.withValues(alpha: 0.45),
-      _                            => Colors.black.withValues(alpha: 0.10),
-    };
+    final shadowColor =
+        Colors.black.withValues(alpha: isSelected ? 0.05 : 0.07);
     final opacity = state == _ChoiceState.dimmed ? 0.38 : 1.0;
     final isInteractive = state == _ChoiceState.idle;
+    final badgeColor = switch (state) {
+      _ChoiceState.selectedCorrect => _successGreen.withValues(alpha: 0.12),
+      _ChoiceState.selectedWrong =>
+        const Color(0xFFFF9A3C).withValues(alpha: 0.12),
+      _ => const Color(0xFFF6F1E8),
+    };
+    final badgeTextColor = switch (state) {
+      _ChoiceState.selectedCorrect => _successGreen,
+      _ChoiceState.selectedWrong => const Color(0xFFFF9A3C),
+      _ => _textDark,
+    };
 
     Widget card = Opacity(
       opacity: opacity,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        constraints: const BoxConstraints(minHeight: 80),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: choice.cardColor,
+          color: cardBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: borderColor,
-            width: borderColor == Colors.transparent ? 0 : 3,
+            width: 1,
           ),
           boxShadow: [
-            BoxShadow(color: shadowColor, offset: const Offset(3, 5), blurRadius: 0),
+            BoxShadow(
+              color: shadowColor,
+              offset: const Offset(0, 8),
+              blurRadius: 18,
+            ),
           ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar jawaban (jika tersedia) atau emoji fallback
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: choice.imagePath != null
-                  ? Image.asset(
-                      choice.imagePath!,
-                      width: 64, height: 64,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(choice.emoji, style: const TextStyle(fontSize: 28)),
+            _ChoiceAssetPreview(
+              assetPath: imagePath,
+              fallbackEmoji: choice.emoji,
+              fallbackLabel: choice.label,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      optionLabel,
+                      style: GoogleFonts.baloo2(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: badgeTextColor,
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    choice.label,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+              ],
             ),
-
-            const SizedBox(width: 14),
-
-            // Label
-            Expanded(
-              child: Text(choice.label,
-                  style: GoogleFonts.baloo2(
-                      fontSize: 17, fontWeight: FontWeight.w700,
-                      color: _textDark, height: 1.3)),
-            ),
-
-            // Result badge
-            if (state == _ChoiceState.selectedCorrect)
-              Container(
-                width: 32, height: 32,
-                decoration: const BoxDecoration(color: _successGreen, shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded, size: 20, color: Colors.white),
-              ),
-            if (state == _ChoiceState.selectedWrong)
-              Container(
-                width: 32, height: 32,
-                decoration: const BoxDecoration(color: _errorRed, shape: BoxShape.circle),
-                child: const Icon(Icons.close_rounded, size: 20, color: Colors.white),
-              ),
           ],
         ),
       ),
@@ -1732,14 +2398,177 @@ class _ChoiceCard extends StatelessWidget {
   }
 }
 
-// ─── Feedback Panel ───────────────────────────────────────────────────────────
+class _ChoiceAssetPreview extends StatefulWidget {
+  final String assetPath;
+  final String fallbackEmoji;
+  final String fallbackLabel;
 
-class _FeedbackPanel extends StatelessWidget {
+  const _ChoiceAssetPreview({
+    required this.assetPath,
+    required this.fallbackEmoji,
+    required this.fallbackLabel,
+  });
+
+  @override
+  State<_ChoiceAssetPreview> createState() => _ChoiceAssetPreviewState();
+}
+
+class _ChoiceAssetPreviewState extends State<_ChoiceAssetPreview> {
+  late Future<bool> _existsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _existsFuture = _assetExists(widget.assetPath);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChoiceAssetPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.assetPath != widget.assetPath) {
+      _existsFuture = _assetExists(widget.assetPath);
+    }
+  }
+
+  Future<bool> _assetExists(String assetPath) async {
+    try {
+      await rootBundle.load(assetPath);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _existsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.data != true) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _LandscapeAssetImage(
+            assetPath: widget.assetPath,
+            fallbackEmoji: widget.fallbackEmoji,
+            fallbackLabel: widget.fallbackLabel,
+            height: 110,
+            borderRadius: 16,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LandscapeAssetImage extends StatelessWidget {
+  final String assetPath;
+  final String fallbackEmoji;
+  final String fallbackLabel;
+  final double height;
+  final double borderRadius;
+
+  const _LandscapeAssetImage({
+    required this.assetPath,
+    required this.fallbackEmoji,
+    required this.fallbackLabel,
+    required this.height,
+    required this.borderRadius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: SizedBox(
+        width: double.infinity,
+        height: height,
+        child: Image.asset(
+          assetPath,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _LandscapeImageFallback(
+            emoji: fallbackEmoji,
+            label: fallbackLabel,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LandscapeImageFallback extends StatelessWidget {
+  final String emoji;
+  final String label;
+
+  const _LandscapeImageFallback({
+    required this.emoji,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _zoneColor.withValues(alpha: 0.16),
+            const Color(0xFFFFF3D6),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            bottom: -22,
+            child: Opacity(
+              opacity: 0.20,
+              child: Text(emoji, style: const TextStyle(fontSize: 96)),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 34)),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.baloo2(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _textDark,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Feedback Dialog ──────────────────────────────────────────────────────────
+
+class _FeedbackDialog extends StatelessWidget {
   final ThinkChoice choice;
   final VoidCallback onNext;
   final bool isLastQuestion;
 
-  const _FeedbackPanel({
+  const _FeedbackDialog({
     required this.choice,
     required this.onNext,
     required this.isLastQuestion,
@@ -1748,51 +2577,89 @@ class _FeedbackPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCorrect = choice.isCorrect;
-    final bgColor = isCorrect ? const Color(0xFFE8F5E9) : const Color(0xFFFFF8E7);
-    final borderColor = isCorrect ? _successGreen : const Color(0xFFFF9A3C);
     final headerEmoji = isCorrect ? '🌟' : '💭';
     final headerText = isCorrect ? 'Betul!' : 'Yuk pikirkan lagi!';
+    final accentColor = isCorrect ? _zoneColor : const Color(0xFFFF9A3C);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 2),
-        boxShadow: [
-          BoxShadow(color: _zoneShadow.withValues(alpha: 0.25), offset: const Offset(3, 5), blurRadius: 0),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Text(headerEmoji, style: const TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
-              Text(headerText,
-                  style: GoogleFonts.baloo2(
-                      fontSize: 17, fontWeight: FontWeight.w700,
-                      color: isCorrect ? _successGreen : _textDark)),
-            ],
-          ),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+                color: _zoneShadow.withValues(alpha: 0.30),
+                offset: const Offset(4, 8),
+                blurRadius: 0),
+          ],
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child:
+                        Text(headerEmoji, style: const TextStyle(fontSize: 26)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(headerText,
+                    style: GoogleFonts.baloo2(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark)),
+              ],
+            ),
 
-          const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
-          Text(choice.feedback,
-              style: GoogleFonts.dmSans(fontSize: 16, height: 1.55, color: _textDark)),
+            // Raccoo mascot + feedback text
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('🦝', style: TextStyle(fontSize: 30)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(choice.feedback,
+                        style: GoogleFonts.dmSans(
+                            fontSize: 16, height: 1.55, color: _textDark)),
+                  ),
+                ],
+              ),
+            ),
 
-          const SizedBox(height: 14),
+            const SizedBox(height: 20),
 
-          _ThinkButton(
-            label: isLastQuestion ? 'Lihat Skor Level →' : 'Lanjut →',
-            color: isCorrect ? _zoneColor : const Color(0xFFFF9A3C),
-            textColor: Colors.white,
-            icon: isLastQuestion ? Icons.bar_chart_rounded : Icons.arrow_forward_rounded,
-            onTap: onNext,
-          ),
-        ],
+            _ThinkButton(
+              label: isLastQuestion ? 'Lihat Skor Level →' : 'Lanjut →',
+              color: accentColor,
+              textColor: Colors.white,
+              icon: isLastQuestion
+                  ? Icons.bar_chart_rounded
+                  : Icons.arrow_forward_rounded,
+              onTap: onNext,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1807,8 +2674,10 @@ class _ScoreStat extends StatelessWidget {
   final IconData icon;
 
   const _ScoreStat({
-    required this.label, required this.value,
-    required this.color, required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
   });
 
   @override
@@ -1818,9 +2687,9 @@ class _ScoreStat extends StatelessWidget {
         Icon(icon, size: 22, color: color),
         const SizedBox(height: 4),
         Text(value,
-            style: GoogleFonts.baloo2(fontSize: 24, fontWeight: FontWeight.w800, color: color)),
-        Text(label,
-            style: GoogleFonts.dmSans(fontSize: 12, color: _textMuted)),
+            style: GoogleFonts.baloo2(
+                fontSize: 24, fontWeight: FontWeight.w800, color: color)),
+        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: _textMuted)),
       ],
     );
   }
@@ -1834,8 +2703,10 @@ class _ThinkButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ThinkButton({
-    required this.label, required this.color,
-    required this.textColor, required this.icon,
+    required this.label,
+    required this.color,
+    required this.textColor,
+    required this.icon,
     required this.onTap,
   });
 
@@ -1848,10 +2719,13 @@ class _ThinkButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(16),
-          border: color == Colors.white ? Border.all(color: _zoneColor, width: 2) : null,
+          border: color == Colors.white
+              ? Border.all(color: _zoneColor, width: 2)
+              : null,
           boxShadow: [
             BoxShadow(
-              color: _zoneShadow.withValues(alpha: color == Colors.white ? 0.18 : 0.45),
+              color: _zoneShadow.withValues(
+                  alpha: color == Colors.white ? 0.18 : 0.45),
               offset: const Offset(3, 5),
               blurRadius: 0,
             ),
@@ -1864,7 +2738,9 @@ class _ThinkButton extends StatelessWidget {
             const SizedBox(width: 8),
             Text(label,
                 style: GoogleFonts.baloo2(
-                    fontSize: 17, fontWeight: FontWeight.w700, color: textColor)),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: textColor)),
           ],
         ),
       ),
