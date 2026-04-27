@@ -19,11 +19,17 @@ dependencies:
   # Navigation
   go_router: ^14.2.7
 
-  # ML Kit face detection (Expression Mirroring game)
+  # ML Kit face detection (Expression Mirroring game — bounding box only)
   google_mlkit_face_detection: ^0.11.0
 
   # Camera feed (Expression Mirroring game)
   camera: ^0.11.0+2
+
+  # TFLite runtime for FER emotion classification model
+  tflite_flutter: ^0.12.1
+
+  # Image decoding + crop/resize for TFLite preprocessing
+  image: ^4.1.0
 
   # Audio playback (voice instructions + SFX)
   just_audio: ^0.9.40
@@ -74,3 +80,5 @@ flutter:
     - assets/audio/background/
     # Raccoo emotion video animations
     - assets/video/
+    # TFLite FER model
+    - assets/model/

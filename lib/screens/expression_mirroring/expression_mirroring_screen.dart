@@ -80,7 +80,7 @@ const List<_MirrorTarget> _allTargets = [
   ),
   _MirrorTarget(
     emotion: Emotion.sad,
-    mlKitDetectable: false,
+    mlKitDetectable: true,
     instruction: 'Coba tirukan wajah SEDIH!',
     raccooTip: 'Turunkan sudut bibirmu dan coba kelihatan murung. 😢',
     feedbackMatch: 'Keren! Wajah sedihmu bagus sekali! Kamu pintar!',
@@ -90,7 +90,7 @@ const List<_MirrorTarget> _allTargets = [
   ),
   _MirrorTarget(
     emotion: Emotion.angry,
-    mlKitDetectable: false,
+    mlKitDetectable: true,
     instruction: 'Coba tirukan wajah MARAH!',
     raccooTip: 'Kerutkan alismu ke tengah dan cemberut! 😠',
     feedbackMatch: 'Kamu sudah berhasil! Wajah marahnya keren!',
@@ -120,7 +120,7 @@ const List<_MirrorTarget> _allTargets = [
   ),
   _MirrorTarget(
     emotion: Emotion.disgust,
-    mlKitDetectable: false,
+    mlKitDetectable: true,
     instruction: 'Coba tirukan wajah JIJIK!',
     raccooTip: 'Kerutkan hidungmu dan angkat bibir atasmu — eugh! 🤢',
     feedbackMatch: 'Berhasil! Wajah jijiknya sudah kelihatan!',
@@ -156,8 +156,8 @@ enum _Phase {
 /// State machine:  cameraInit → detecting ↔ matched → done
 ///                           └→ noCamera  ↔ matched → done
 ///
-/// Emosi yang bisa dideteksi otomatis (ML Kit):  happy, surprised, scared
-/// Emosi lainnya (sad, angry, disgust):           self-report setelah [_selfReportDelay]
+/// Emosi yang bisa dideteksi otomatis (ML Kit):
+///   happy, surprised, scared, sadness, anger, disgust
 class ExpressionMirroringScreen extends StatefulWidget {
   const ExpressionMirroringScreen({super.key});
 
@@ -185,6 +185,16 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   bool _faceDetected = false;
   bool _selfReportVisible = false;
   String _feedbackText = '';
+
+  // Require this many consecutive matching frames (~600 ms at 5 fps) before
+  // accepting the expression — prevents a single accidental frame from passing.
+  static const int _requiredConsecutiveMatches = 3;
+  int _consecutiveMatchCount = 0;
+
+  // Camera switching
+  List<CameraDescription> _cameras = [];
+  int _cameraIndex = 0;
+  bool _isSwitchingCamera = false;
 
   // ── Services ─────────────────────────────────────────────────────────────
 
@@ -246,7 +256,6 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
     );
 
     _audio = context.read<AudioService>();
-    _faceService.init();
     _initCamera();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -274,15 +283,21 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   // ── Camera Init ──────────────────────────────────────────────────────────
 
   Future<void> _initCamera() async {
+    // Load TFLite model before opening the camera so inference is ready
+    // as soon as the first frames arrive.
+    await _faceService.init();
+
     try {
-      final cameras = await availableCameras();
-      final front = cameras.firstWhere(
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) throw Exception('No cameras found');
+
+      final frontIndex = _cameras.indexWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
-        orElse: () => throw Exception('No front camera'),
       );
+      _cameraIndex = frontIndex >= 0 ? frontIndex : 0;
 
       final controller = CameraController(
-        front,
+        _cameras[_cameraIndex],
         ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
@@ -305,6 +320,43 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
     }
   }
 
+  // ── Camera Switch ────────────────────────────────────────────────────────
+
+  Future<void> _switchCamera() async {
+    if (_cameras.length < 2 || _isSwitchingCamera) return;
+    setState(() => _isSwitchingCamera = true);
+
+    _faceService.stopProcessing();
+    _detectionSub?.cancel();
+    _detectionSub = null;
+
+    final old = _cameraController;
+    setState(() => _cameraController = null);
+    await old?.dispose();
+
+    _cameraIndex = (_cameraIndex + 1) % _cameras.length;
+
+    try {
+      final controller = CameraController(
+        _cameras[_cameraIndex],
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      await controller.initialize();
+      if (!mounted) return;
+
+      _cameraController = controller;
+      _faceService.startProcessing(controller);
+      _detectionSub = _faceService.results.listen(_onDetectionResult);
+      _consecutiveMatchCount = 0;
+      setState(() => _isSwitchingCamera = false);
+    } catch (e) {
+      debugPrint('[RaccooMirror] Camera switch failed: $e');
+      if (mounted) setState(() => _isSwitchingCamera = false);
+    }
+  }
+
   // ── Round Management ─────────────────────────────────────────────────────
 
   /// Persiapkan ronde baru: reset flag, mulai timer self-report jika perlu.
@@ -317,6 +369,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
       _selfReportVisible = false;
       _feedbackText = '';
     });
+    _consecutiveMatchCount = 0;
 
     // Untuk emosi yang tidak bisa dideteksi ML Kit, atau di mode noCamera,
     // mulai timer agar tombol "Sudah Coba!" muncul setelah beberapa detik.
@@ -387,8 +440,13 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
 
     final matches = _emotionMatches(result.emotion, _currentTarget.emotion);
     if (matches) {
-      _onExpressionMatched();
+      _consecutiveMatchCount++;
+      if (_consecutiveMatchCount >= _requiredConsecutiveMatches) {
+        _consecutiveMatchCount = 0;
+        _onExpressionMatched();
+      }
     } else {
+      _consecutiveMatchCount = 0;
       setState(() => _feedbackText = _currentTarget.feedbackTrying);
     }
   }
@@ -398,9 +456,15 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
       case Emotion.happy:
         return detected == DetectedEmotion.happy;
       case Emotion.surprised:
-        return detected == DetectedEmotion.surprised;
+        return detected == DetectedEmotion.surprise;
       case Emotion.scared:
-        return detected == DetectedEmotion.scared;
+        return detected == DetectedEmotion.fear;
+      case Emotion.sad:
+        return detected == DetectedEmotion.sad;
+      case Emotion.angry:
+        return detected == DetectedEmotion.angry;
+      case Emotion.disgust:
+        return detected == DetectedEmotion.disgust;
       default:
         return false;
     }
@@ -931,6 +995,39 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                   controller: controller,
                   faceDetected: _faceDetected,
                 ),
+
+                // Switch camera button — top-left, only when 2+ cameras available
+                if (_cameras.length >= 2)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: GestureDetector(
+                      onTap: _isSwitchingCamera ? null : _switchCamera,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: _isSwitchingCamera
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.cameraswitch_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                      ),
+                    ),
+                  ),
 
                 // "Tampakkan wajahmu!" overlay saat tidak ada wajah
                 if (!_faceDetected)
