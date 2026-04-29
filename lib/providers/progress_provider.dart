@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../models/game_feature_catalog.dart';
 import '../models/game_progress.dart';
 import '../services/storage_service.dart';
 
@@ -119,15 +120,16 @@ class ProgressProvider extends ChangeNotifier {
   String exportCsv() {
     final p = progress;
     final buffer = StringBuffer();
-    buffer.writeln('child,game,sessions,correct,accuracy,last_played');
-    for (final gameId in GameProgress.allGameIds) {
-      final sessions = p.playCounts[gameId] ?? 0;
-      final correct = p.correctCounts[gameId] ?? 0;
+    buffer.writeln(
+        'child,game_id,game_name,records,correct,accuracy,last_played');
+    for (final feature in activeGameFeatures) {
+      final records = p.playCounts[feature.id] ?? 0;
+      final correct = p.correctCounts[feature.id] ?? 0;
       final accuracy =
-          sessions > 0 ? (correct / sessions * 100).toStringAsFixed(1) : '-';
-      final lastPlayed = p.lastPlayed[gameId]?.toIso8601String() ?? '-';
+          records > 0 ? (correct / records * 100).toStringAsFixed(1) : '-';
+      final lastPlayed = p.lastPlayed[feature.id]?.toIso8601String() ?? '-';
       buffer.writeln(
-          '${p.childName},$gameId,$sessions,$correct,$accuracy%,$lastPlayed');
+          '${p.childName},${feature.id},${feature.title},$records,$correct,$accuracy%,$lastPlayed');
     }
     return buffer.toString();
   }

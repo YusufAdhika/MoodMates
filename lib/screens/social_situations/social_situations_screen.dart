@@ -987,6 +987,105 @@ const List<ThinkScenario> thinkScenarios = [
 
 enum _Phase { levelIntro, choosing, revealed, levelResult, done }
 
+enum _ResumeChoice { continueQuestion, retryLevel }
+
+class _SavedResumeSnapshot {
+  final int currentLevel;
+  final int questionInLevel;
+  final int levelCorrect;
+  final int totalCorrect;
+  final _Phase phase;
+  final Map<int, List<ThinkScenario>> scenarios;
+
+  const _SavedResumeSnapshot({
+    required this.currentLevel,
+    required this.questionInLevel,
+    required this.levelCorrect,
+    required this.totalCorrect,
+    required this.phase,
+    required this.scenarios,
+  });
+}
+
+class _SessionAssessment {
+  final int correct;
+  final int total;
+
+  const _SessionAssessment({
+    required this.correct,
+    required this.total,
+  });
+
+  int get score => total == 0 ? 0 : ((correct / total) * 100).round();
+
+  String get category {
+    if (correct >= 5) return 'Mahir';
+    if (correct >= 3) return 'Berkembang';
+    if (correct >= 1) return 'Mulai Tumbuh';
+    return 'Perlu Bimbingan';
+  }
+
+  bool get passed => correct >= 3;
+
+  bool get isPerfect => correct == total;
+
+  int get stars {
+    switch (category) {
+      case 'Mahir':
+        return 3;
+      case 'Berkembang':
+        return 2;
+      case 'Mulai Tumbuh':
+        return 1;
+      case 'Perlu Bimbingan':
+        return 0;
+    }
+    return 0;
+  }
+
+  Color get accentColor {
+    switch (category) {
+      case 'Mahir':
+        return _successGreen;
+      case 'Berkembang':
+        return _zoneColor;
+      case 'Mulai Tumbuh':
+        return const Color(0xFFFF9A3C);
+      case 'Perlu Bimbingan':
+        return const Color(0xFFE6A700);
+    }
+    return _zoneColor;
+  }
+
+  String get headline {
+    switch (category) {
+      case 'Mahir':
+        return isPerfect ? 'Mahir! 🏆' : 'Mahir! 🌟';
+      case 'Berkembang':
+        return 'Berkembang! 🌱';
+      case 'Mulai Tumbuh':
+        return 'Mulai Tumbuh 🌿';
+      case 'Perlu Bimbingan':
+        return 'Perlu Bimbingan 💛';
+    }
+    return 'Hasil Sesi';
+  }
+
+  String get raccooMood {
+    switch (category) {
+      case 'Mahir':
+        return '🦝🎉';
+      case 'Berkembang':
+        return '🦝✨';
+      case 'Mulai Tumbuh':
+        return '🦝🌱';
+      case 'Perlu Bimbingan':
+        return '🦝💛';
+    }
+    return '🦝';
+  }
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 class SocialSituationsScreen extends StatefulWidget {
@@ -1004,6 +1103,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   int _questionInLevel = 0;
   int _levelCorrect = 0;
   int _totalCorrect = 0;
+  bool _hasStartedSession = false;
   ThinkChoice? _selectedChoice;
   late Map<int, List<ThinkScenario>> _levelScenarios;
 
@@ -1011,10 +1111,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
       _levelScenarios[_currentLevel]![_questionInLevel];
   int get _questionsThisLevel =>
       _levelScenarios[_currentLevel]?.length ?? _questionsPerLevel;
-  int get _passScoreThisLevel => (_questionsThisLevel * 2 / 3).ceil();
   bool get _isLastQuestionInLevel =>
       _questionInLevel >= _questionsThisLevel - 1;
   int get _totalQuestionsInRun => _questionsPerLevel * _totalLevels;
+  _SessionAssessment get _levelAssessment =>
+      _SessionAssessment(correct: _levelCorrect, total: _questionsThisLevel);
 
   // Urutan tampil jawaban — diacak tiap soal agar posisi benar/salah berubah
   List<ThinkChoice> _orderedChoices = [];
@@ -1104,8 +1205,13 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
     final saved = storage.loadSocialSituationsResume(profileId);
     if (saved == null) return;
+    final snapshot = _parseSavedResume(saved);
+    if (snapshot == null) {
+      await storage.clearSocialSituationsResume(profileId);
+      return;
+    }
 
-    final resume = await showDialog<bool>(
+    final resume = await showDialog<_ResumeChoice>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
@@ -1114,18 +1220,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             style: GoogleFonts.baloo2(
                 fontSize: 20, fontWeight: FontWeight.w700, color: _textDark)),
         content: Text(
-          'Kamu sudah bermain sampai Level ${saved['currentLevel']} soal ${(saved['questionInLevel'] as int) + 1}. Lanjutkan dari sini?',
+          _resumeMessageForSnapshot(snapshot),
           style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Mulai Baru',
+            onPressed: () => Navigator.pop(ctx, _ResumeChoice.retryLevel),
+            child: Text('Ulang Level ${snapshot.currentLevel}',
                 style: GoogleFonts.dmSans(color: _textMuted)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Ya, Lanjutkan',
+            onPressed: () => Navigator.pop(ctx, _ResumeChoice.continueQuestion),
+            child: Text(_resumePrimaryLabelForSnapshot(snapshot),
                 style: GoogleFonts.dmSans(
                     color: _zoneColor, fontWeight: FontWeight.w700)),
           ),
@@ -1135,31 +1241,153 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
     if (!mounted) return;
 
-    if (resume == true) {
-      _restoreFromSaved(saved);
-    } else {
-      await storage.clearSocialSituationsResume(profileId);
+    if (resume == _ResumeChoice.continueQuestion) {
+      final shouldResumeCurrentQuestion = snapshot.phase == _Phase.choosing ||
+          snapshot.phase == _Phase.revealed;
+      _restoreFromSnapshot(
+        snapshot,
+        resumeCurrentQuestion: shouldResumeCurrentQuestion,
+      );
+    } else if (resume == _ResumeChoice.retryLevel) {
+      _restartFromSnapshot(snapshot);
     }
   }
 
-  void _restoreFromSaved(Map<String, dynamic> saved) {
-    final scenarioIds = saved['scenarioIds'] as Map<String, dynamic>;
-    final restored = <int, List<ThinkScenario>>{};
-    for (int l = 1; l <= _totalLevels; l++) {
-      final ids = (scenarioIds['$l'] as List<dynamic>).cast<String>();
-      restored[l] = ids
-          .map((id) => thinkScenarios.firstWhere(
-                (s) => s.id == id,
-                orElse: () => thinkScenarios.first,
-              ))
-          .toList();
+  _SavedResumeSnapshot? _parseSavedResume(Map<String, dynamic> saved) {
+    try {
+      final currentLevel = saved['currentLevel'] as int;
+      final questionInLevel = saved['questionInLevel'] as int;
+      final levelCorrect = saved['levelCorrect'] as int? ?? 0;
+      final totalCorrect = saved['totalCorrect'] as int? ?? 0;
+      final phase = _phaseFromSavedValue(saved['phase']);
+      final scenarioIds = saved['scenarioIds'] as Map<String, dynamic>;
+
+      if (currentLevel < 1 || currentLevel > _totalLevels) return null;
+
+      final restored = <int, List<ThinkScenario>>{};
+      for (int l = 1; l <= _totalLevels; l++) {
+        final rawIds = scenarioIds['$l'];
+        if (rawIds is! List) return null;
+
+        final ids = rawIds.cast<String>();
+        if (ids.isEmpty) return null;
+
+        restored[l] = ids
+            .map((id) => thinkScenarios.firstWhere(
+                  (s) => s.id == id,
+                  orElse: () => thinkScenarios.first,
+                ))
+            .toList();
+      }
+
+      final questionsInCurrentLevel = restored[currentLevel]!.length;
+      if (questionInLevel < 0 || questionInLevel >= questionsInCurrentLevel) {
+        return null;
+      }
+
+      return _SavedResumeSnapshot(
+        currentLevel: currentLevel,
+        questionInLevel: questionInLevel,
+        levelCorrect: levelCorrect,
+        totalCorrect: totalCorrect,
+        phase: phase,
+        scenarios: restored,
+      );
+    } catch (_) {
+      return null;
     }
+  }
+
+  _Phase _phaseFromSavedValue(Object? raw) {
+    final value = raw as String?;
+    switch (value) {
+      case 'levelIntro':
+        return _Phase.levelIntro;
+      case 'revealed':
+        return _Phase.revealed;
+      case 'levelResult':
+        return _Phase.levelResult;
+      case 'done':
+        return _Phase.done;
+      case 'choosing':
+      default:
+        return _Phase.choosing;
+    }
+  }
+
+  _SessionAssessment _assessmentForSnapshot(_SavedResumeSnapshot snapshot) {
+    return _SessionAssessment(
+      correct: snapshot.levelCorrect,
+      total: snapshot.scenarios[snapshot.currentLevel]!.length,
+    );
+  }
+
+  String _resumeMessageForSnapshot(_SavedResumeSnapshot snapshot) {
+    final totalQuestions = snapshot.scenarios[snapshot.currentLevel]!.length;
+    final currentQuestion = snapshot.questionInLevel + 1;
+    if (snapshot.phase == _Phase.levelResult) {
+      final assessment = _assessmentForSnapshot(snapshot);
+      if (assessment.passed) {
+        return 'Kamu berhenti di hasil Level ${snapshot.currentLevel}.\n\nBuka lagi hasil level ini lalu lanjutkan permainan saat siap.';
+      }
+      return 'Kamu berhenti di hasil Level ${snapshot.currentLevel}.\n\nLevel ini belum tuntas, jadi kamu bisa buka lagi hasilnya atau langsung ulang level ini.';
+    }
+
+    if (snapshot.phase == _Phase.levelIntro) {
+      return 'Kamu terakhir berada di awal Level ${snapshot.currentLevel}.\n\nLanjutkan level ini atau ulang level dengan set soal baru?';
+    }
+
+    return 'Kamu terakhir berhenti di Level ${snapshot.currentLevel}, soal $currentQuestion/$totalQuestions.\n\nLanjutkan dari soal terakhir atau ulang level ini?';
+  }
+
+  String _resumePrimaryLabelForSnapshot(_SavedResumeSnapshot snapshot) {
+    final totalQuestions = snapshot.scenarios[snapshot.currentLevel]!.length;
+    final currentQuestion = snapshot.questionInLevel + 1;
+    if (snapshot.phase == _Phase.levelResult) {
+      return 'Buka Hasil Level ${snapshot.currentLevel}';
+    }
+    if (snapshot.phase == _Phase.levelIntro) {
+      return 'Lanjutkan Level ${snapshot.currentLevel}';
+    }
+    return 'Lanjutkan Soal $currentQuestion/$totalQuestions';
+  }
+
+  void _restoreFromSnapshot(_SavedResumeSnapshot snapshot,
+      {bool resumeCurrentQuestion = false}) {
+    final restored = snapshot.scenarios;
     setState(() {
       _levelScenarios = restored;
-      _currentLevel = saved['currentLevel'] as int;
-      _questionInLevel = saved['questionInLevel'] as int;
-      _levelCorrect = saved['levelCorrect'] as int;
-      _totalCorrect = saved['totalCorrect'] as int;
+      _currentLevel = snapshot.currentLevel;
+      _questionInLevel = snapshot.questionInLevel;
+      _levelCorrect = snapshot.levelCorrect;
+      _totalCorrect = snapshot.totalCorrect;
+      _hasStartedSession = true;
+      _phase = resumeCurrentQuestion
+          ? _Phase.choosing
+          : (snapshot.phase == _Phase.revealed
+              ? _Phase.choosing
+              : snapshot.phase);
+    });
+    if (resumeCurrentQuestion) {
+      _startQuestion();
+    }
+  }
+
+  void _restartFromSnapshot(_SavedResumeSnapshot snapshot) {
+    final restored = snapshot.scenarios;
+    final currentLevel = snapshot.currentLevel;
+    final levelCorrect = snapshot.levelCorrect;
+    final totalCorrect = snapshot.totalCorrect;
+
+    _levelScenarios = restored;
+    _buildLevelScenarios(currentLevel);
+
+    setState(() {
+      _currentLevel = currentLevel;
+      _questionInLevel = 0;
+      _levelCorrect = 0;
+      _totalCorrect = math.max(0, totalCorrect - levelCorrect);
+      _hasStartedSession = true;
       _phase = _Phase.levelIntro;
     });
   }
@@ -1174,7 +1402,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
     final isAtStart = _currentLevel == 1 &&
         _questionInLevel == 0 &&
         _levelCorrect == 0 &&
-        _totalCorrect == 0;
+        _totalCorrect == 0 &&
+        !_hasStartedSession;
     if (isAtStart) return;
 
     final scenarioIds = <String, List<String>>{};
@@ -1187,6 +1416,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
       'questionInLevel': _questionInLevel,
       'levelCorrect': _levelCorrect,
       'totalCorrect': _totalCorrect,
+      'phase': _phase.name,
       'scenarioIds': scenarioIds,
     });
   }
@@ -1262,6 +1492,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
     final choices = [_current.choiceA, _current.choiceB]
       ..shuffle(math.Random());
     setState(() {
+      _hasStartedSession = true;
       _phase = _Phase.choosing;
       _selectedChoice = null;
       _orderedChoices = choices;
@@ -1356,6 +1587,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   Future<bool> _confirmExit() async {
     final isMidGame = _phase == _Phase.choosing || _phase == _Phase.revealed;
+    final shouldPersistResume = _phase != _Phase.done;
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1366,7 +1598,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         content: Text(
           isMidGame
               ? 'Permainanmu akan disimpan. Kamu bisa lanjutkan nanti!'
-              : 'Progresmu hari ini akan tersimpan!',
+              : 'Progress level dan posisi terakhirmu akan disimpan!',
           style: GoogleFonts.dmSans(fontSize: 14, color: _textMuted),
         ),
         actions: [
@@ -1384,7 +1616,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         ],
       ),
     );
-    if (result == true && isMidGame) {
+    if (result == true && shouldPersistResume) {
       await _saveResumeState();
     }
     return result ?? false;
@@ -1769,16 +2001,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   // ── Level Result ──────────────────────────────────────────────────────────
 
   Widget _buildLevelResult() {
-    final passed = _levelCorrect >= _passScoreThisLevel;
-    final isPerfect = _levelCorrect == _questionsThisLevel;
+    final assessment = _levelAssessment;
+    final passed = assessment.passed;
     final isLastLevel = _currentLevel == _totalLevels;
-    final levelStars = _levelCorrect == _questionsThisLevel
-        ? 3
-        : _levelCorrect >= _passScoreThisLevel
-            ? 2
-            : _levelCorrect > 0
-                ? 1
-                : 0;
+    final levelStars = assessment.stars;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1790,12 +2016,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              color: passed ? _successGreen : const Color(0xFFFF9A3C),
+              color: assessment.accentColor,
               borderRadius: BorderRadius.circular(999),
               boxShadow: [
                 BoxShadow(
-                  color: (passed ? _zoneShadow : const Color(0xFFC85A00))
-                      .withValues(alpha: 0.5),
+                  color: assessment.accentColor.withValues(alpha: 0.35),
                   offset: const Offset(3, 4),
                   blurRadius: 0,
                 ),
@@ -1821,12 +2046,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 width: 140,
                 height: 140,
                 decoration: BoxDecoration(
-                  color: (passed ? _zoneColor : const Color(0xFFFF9A3C))
-                      .withValues(alpha: 0.12),
+                  color: assessment.accentColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Text(passed ? '🦝🎉' : '🦝💪',
+                  child: Text(assessment.raccooMood,
                       style: const TextStyle(fontSize: 64)),
                 ),
               ),
@@ -1836,9 +2060,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           const SizedBox(height: 20),
 
           Text(
-            passed
-                ? (isPerfect ? 'Sempurna! 🏆' : 'Bagus! 🎉')
-                : 'Hampir! Coba lagi ya! 💪',
+            assessment.headline,
             style: GoogleFonts.baloo2(
                 fontSize: 32,
                 fontWeight: FontWeight.w800,
@@ -1849,9 +2071,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           const SizedBox(height: 8),
 
           Text(
-            passed
-                ? 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal dengan benar!'
-                : 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal benar.\nRaccoo percaya kamu pasti bisa!',
+            'Hasil penilaian sesi untuk level ini:',
             textAlign: TextAlign.center,
             style: GoogleFonts.baloo2(
                 fontSize: 17,
@@ -1861,6 +2081,46 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           ),
 
           const SizedBox(height: 24),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: assessment.accentColor.withValues(alpha: 0.18),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  offset: const Offset(0, 10),
+                  blurRadius: 20,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _AssessmentRow(
+                  label: 'Jumlah Benar',
+                  value: '$_levelCorrect/$_questionsThisLevel',
+                ),
+                const SizedBox(height: 10),
+                _AssessmentRow(
+                  label: 'Skor',
+                  value: '${assessment.score}%',
+                ),
+                const SizedBox(height: 10),
+                _AssessmentRow(
+                  label: 'Kategori',
+                  value: assessment.category,
+                  valueColor: assessment.accentColor,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
 
           // Stars
           Row(
@@ -2061,6 +2321,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                       _questionInLevel = 0;
                       _levelCorrect = 0;
                       _totalCorrect = 0;
+                      _hasStartedSession = false;
                       _phase = _Phase.levelIntro;
                     });
                     _celebrationController.reset();
@@ -2666,6 +2927,44 @@ class _FeedbackDialog extends StatelessWidget {
 }
 
 // ─── Shared small widgets ─────────────────────────────────────────────────────
+
+class _AssessmentRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _AssessmentRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$label:',
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _textMuted,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.baloo2(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: valueColor ?? _textDark,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _ScoreStat extends StatelessWidget {
   final String label;
