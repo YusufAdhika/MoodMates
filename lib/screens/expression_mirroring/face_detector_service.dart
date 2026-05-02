@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Rect, Size;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -29,11 +30,19 @@ class FaceDetectionResult {
   /// Raw softmax probabilities [Angry, Disgust, Fear, Happy, Sad, Surprise].
   final List<double> probabilities;
 
+  /// Bounding box in image pixel coordinates (null when no face found).
+  final Rect? faceBoundingBox;
+
+  /// Pixel dimensions of the image the bounding box was detected in.
+  final Size? imageSize;
+
   const FaceDetectionResult({
     required this.faceFound,
     required this.confidence,
     required this.emotion,
     required this.probabilities,
+    this.faceBoundingBox,
+    this.imageSize,
   });
 
   static const FaceDetectionResult noFace = FaceDetectionResult(
@@ -67,7 +76,7 @@ class FaceDetectorService {
   // Minimum top-1 probability to emit a non-unknown emotion.
   static const double _minEmotionConfidence = 0.40;
 
-  static const Duration _frameInterval = Duration(milliseconds: 200); // 5 fps
+  static const Duration _frameInterval = Duration(milliseconds: 100); // 5 fps
   static const int _inputSize = 48;
   static const String _modelAsset = 'assets/model/fer_model.tflite';
 
@@ -224,6 +233,8 @@ class FaceDetectorService {
         confidence: faceWidthRatio.clamp(0.0, 1.0),
         emotion: emotion,
         probabilities: probs,
+        faceBoundingBox: face.boundingBox,
+        imageSize: Size(decoded.width.toDouble(), decoded.height.toDouble()),
       ));
     } catch (e) {
       debugPrint('[FaceDetectorService] Frame error: $e');
