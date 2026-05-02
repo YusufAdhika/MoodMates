@@ -15,6 +15,7 @@ import '../../services/storage_service.dart';
 
 const _zoneBg = Color(0xFFF0F9F0);
 const _zoneColor = Color(0xFF4CAF6E);
+const _zoneBlackColor = Color(0x00000000);
 const _zoneShadow = Color(0xFF1A5E36);
 const _textDark = Color(0xFF3D2B1A);
 const _textMuted = Color(0xFF8D6E63);
@@ -65,9 +66,9 @@ const int _totalLevels = 3;
 const int _questionsPerLevel = 6;
 
 const _levelGoals = {
-  1: 'Yuk mulai dengan 1 soal\ndari setiap tema 🌈',
-  2: 'Lanjut latihan dengan situasi baru\ndari semua tema 🚀',
-  3: 'Tantangan terakhir:\nsatu soal lagi dari semua tema 🏆',
+  1: 'Yuk mulai dengan 1 soal\ndari setiap tema ',
+  2: 'Lanjut latihan dengan situasi baru\ndari semua tema ',
+  3: 'Tantangan terakhir:\nsatu soal lagi dari semua tema   ',
 };
 
 // ─── Data Models ──────────────────────────────────────────────────────────────
@@ -1016,6 +1017,20 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
       _questionInLevel >= _questionsThisLevel - 1;
   int get _totalQuestionsInRun => _questionsPerLevel * _totalLevels;
 
+  String get _backgroundImagePath {
+    if (_phase == _Phase.levelResult) {
+      final passed = _levelCorrect >= _passScoreThisLevel;
+      final isPerfect = _levelCorrect == _questionsThisLevel;
+      if (isPerfect) return 'assets/images/background/bg_racoo_think_success.png';
+      if (passed) return 'assets/images/background/bg_racoo_think_mild_success.png';
+      return 'assets/images/background/bg_racoo_think_good_job.png';
+    }
+    if (_phase == _Phase.done) {
+      return 'assets/images/background/bg_racoo_think_summary.png';
+    }
+    return 'assets/images/background/bg_racoo_think.png';
+  }
+
   // Urutan tampil jawaban — diacak tiap soal agar posisi benar/salah berubah
   List<ThinkChoice> _orderedChoices = [];
 
@@ -1404,8 +1419,16 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           context.pop();
         }
       },
-      child: Scaffold(
-        backgroundColor: _zoneBg,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              _backgroundImagePath,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Scaffold(
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: switch (_phase) {
             _Phase.levelIntro => _buildLevelIntro(),
@@ -1414,6 +1437,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             _Phase.done => _buildDoneScreen(),
           },
         ),
+      ),
+        ],
       ),
     );
   }
@@ -1452,8 +1477,9 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                       ? _successGreen
                       : isActive
                           ? _zoneColor
-                          : _zoneColor.withValues(alpha: 0.18),
+                          : _zoneBlackColor.withValues(alpha: 1),
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2.5),
                   boxShadow: isActive
                       ? [
                           BoxShadow(
@@ -1491,17 +1517,24 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           // Raccoo bobbing
           AnimatedBuilder(
             animation: _raccooFloat,
-            builder: (_, child) => Transform.translate(
-                offset: Offset(0, _raccooFloat.value), child: child),
+            builder: (context, child) => Transform.translate(
+              offset: Offset(0, _raccooFloat.value),
+              child: child,
+            ),
             child: Container(
-              width: 148,
-              height: 148,
+              width: 160,
+              height: 160,
               decoration: BoxDecoration(
-                color: _zoneColor.withValues(alpha: 0.12),
+                color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Center(
-                child: Text('🦝', style: TextStyle(fontSize: 80)),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/characters/racoo_avatar_brown.png',
+                  width: 160,
+                  height: 160,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
@@ -1522,7 +1555,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             ),
             child: Column(
               children: [
-                Text('🎯 Tujuan belajar kita:',
+                Text('Tujuan belajar kita:',
                     style: GoogleFonts.dmSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -1539,29 +1572,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // Q dots
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              _questionsThisLevel,
-              (i) => Container(
-                width: 10,
-                height: 10,
-                margin: const EdgeInsets.symmetric(horizontal: 5),
-                decoration: BoxDecoration(
-                  color: _zoneColor.withValues(alpha: 0.28),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
-
           const Spacer(),
 
           _ThinkButton(
-            label: 'Mulai Level $_currentLevel!',
+            label: 'Mulai Level $_currentLevel',
             color: _zoneColor,
             textColor: Colors.white,
             icon: Icons.play_arrow_rounded,
@@ -1606,13 +1620,20 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
                 const SizedBox(height: 12),
 
-                Text(
-                  'Pilih jawaban yang paling tepat',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _textMuted,
-                    letterSpacing: 0.2,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Pilih jawaban yang paling tepat',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ),
 
@@ -1669,34 +1690,23 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
         children: [
-          GestureDetector(
+
+          _Button(
+            img: 'assets/images/ui/ic_left_feel.png',
+            width: 64,
+            height: 64,
             onTap: () async {
               final ok = await _confirmExit();
               if (ok && mounted) context.pop();
             },
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(
-                      color: _zoneShadow, offset: Offset(2, 3), blurRadius: 0)
-                ],
-              ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  color: _textDark, size: 26),
-            ),
           ),
-
           const SizedBox(width: 10),
 
           // Theme pill
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: style.accent.withValues(alpha: 0.12),
+              color: style.accent.withValues(alpha: 0.90),
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: style.accent.withValues(alpha: 0.3)),
             ),
@@ -1707,14 +1717,14 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   width: 7,
                   height: 7,
                   decoration: BoxDecoration(
-                      color: style.accent, shape: BoxShape.circle),
+                      color: Colors.white, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 5),
                 Text(_current.theme,
                     style: GoogleFonts.dmSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: style.accent)),
+                        color: Colors.white)),
               ],
             ),
           ),
@@ -1722,33 +1732,43 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           const Spacer(),
 
           // Q progress dots
-          Row(
-            children: List.generate(_questionsThisLevel, (i) {
-              final isDone = i < _questionInLevel;
-              final isActive = i == _questionInLevel;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: isActive ? 22 : 8,
-                height: 8,
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(
-                  color: isDone
-                      ? _successGreen
-                      : isActive
-                          ? _zoneColor
-                          : _zoneColor.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(999),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              children: [
+                Row(
+                  children: List.generate(_questionsThisLevel, (i) {
+                    final isDone = i < _questionInLevel;
+                    final isActive = i == _questionInLevel;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: isActive ? 22 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: isDone
+                            ? _successGreen
+                            : isActive
+                                ? _zoneColor
+                                : _zoneColor.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    );
+                  }),
                 ),
-              );
-            }),
+                const SizedBox(width: 8),
+                Text('${_questionInLevel + 1}/$_questionsThisLevel',
+                    style: GoogleFonts.baloo2(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ],
+            ),
           ),
-
-          const SizedBox(width: 8),
-          Text('${_questionInLevel + 1}/$_questionsThisLevel',
-              style: GoogleFonts.baloo2(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: _textMuted)),
         ],
       ),
     );
@@ -1811,77 +1831,97 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
           const SizedBox(height: 28),
 
           // Raccoo
-          ScaleTransition(
-            scale: _celebrationScale,
-            child: AnimatedBuilder(
-              animation: _raccooFloat,
-              builder: (_, child) => Transform.translate(
-                  offset: Offset(0, _raccooFloat.value), child: child),
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  color: (passed ? _zoneColor : const Color(0xFFFF9A3C))
-                      .withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(passed ? '🦝🎉' : '🦝💪',
-                      style: const TextStyle(fontSize: 64)),
-                ),
-              ),
-            ),
-          ),
+          // ScaleTransition(
+          //   scale: _celebrationScale,
+          //   child: AnimatedBuilder(
+          //     animation: _raccooFloat,
+          //     builder: (_, child) => Transform.translate(
+          //         offset: Offset(0, _raccooFloat.value), child: child),
+          //     child: Container(
+          //       width: 140,
+          //       height: 140,
+          //       decoration: BoxDecoration(
+          //         color: (passed ? _zoneColor : const Color(0xFFFF9A3C))
+          //             .withValues(alpha: 0.12),
+          //         shape: BoxShape.circle,
+          //       ),
+          //       child: Center(
+          //         child: Text(passed ? '🦝🎉' : '🦝💪',
+          //             style: const TextStyle(fontSize: 64)),
+          //       ),
+          //     ),
+          //   ),
+          // ),
 
           const SizedBox(height: 20),
 
-          Text(
-            passed
-                ? (isPerfect ? 'Sempurna! 🏆' : 'Bagus! 🎉')
-                : 'Hampir! Coba lagi ya! 💪',
-            style: GoogleFonts.baloo2(
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                color: _textDark,
-                height: 1.1),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            passed
-                ? 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal dengan benar!'
-                : 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal benar.\nRaccoo percaya kamu pasti bisa!',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: _textMuted,
-                height: 1.4),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Stars
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (i) {
-              final earned = i < levelStars;
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 400 + i * 150),
-                curve: const Cubic(0.34, 1.56, 0.64, 1),
-                builder: (_, v, __) => Transform.scale(
-                  scale: v,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(Icons.star_rounded,
-                        size: 56,
-                        color: earned ? _gold : _gold.withValues(alpha: 0.22)),
-                  ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  passed
+                      ? (isPerfect ? 'Sempurna! 🏆' : 'Bagus! 🎉')
+                      : 'Hampir! Coba lagi ya! 💪',
+                  style: GoogleFonts.baloo2(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: _textDark,
+                      height: 1.1),
                 ),
-              );
-            }),
+                const SizedBox(height: 8),
+                Text(
+                  passed
+                      ? 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal dengan benar!'
+                      : 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal benar.\nRaccoo percaya kamu pasti bisa!',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: _textMuted,
+                      height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                // Stars
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    final earned = i < levelStars;
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 400 + i * 150),
+                      curve: const Cubic(0.34, 1.56, 0.64, 1),
+                      builder: (_, v, __) => Transform.scale(
+                        scale: v,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(Icons.star_rounded,
+                                  size: 62,
+                                  color: const Color(0xFFB8860B).withValues(
+                                      alpha: earned ? 1.0 : 0.22)),
+                              Icon(Icons.star_rounded,
+                                  size: 56,
+                                  color: earned
+                                      ? _gold
+                                      : _gold.withValues(alpha: 0.22)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+
+              ],
+            ),
           ),
 
           const Spacer(),
@@ -1896,7 +1936,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             _ThinkButton(
               label: isLastLevel
                   ? 'Lihat Hasil Akhir 🏆'
-                  : 'Lanjut ke Level ${_currentLevel + 1} →',
+                  : 'Lanjut ke Level ${_currentLevel + 1}',
               color: _zoneColor,
               textColor: Colors.white,
               icon: isLastLevel
@@ -1935,44 +1975,35 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         children: [
           const SizedBox(height: 24),
 
-          ScaleTransition(
-            scale: _celebrationScale,
-            child: AnimatedBuilder(
-              animation: _raccooFloat,
-              builder: (_, child) => Transform.translate(
-                  offset: Offset(0, _raccooFloat.value), child: child),
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  color: _zoneColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                    child: Text('🦝', style: TextStyle(fontSize: 90))),
-              ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                Text(stars == 3 ? 'Sempurna! 🏆' : 'Selesai! 🎉',
+                    style: GoogleFonts.baloo2(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
+                        height: 1.1)),
+
+                const SizedBox(height: 8),
+
+                Text(
+                    'Kamu sudah menyelesaikan\nsemua $_totalLevels level Raccoo Think!',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.baloo2(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: _textMuted,
+                        height: 1.4)),
+              ],
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          Text(stars == 3 ? 'Sempurna! 🏆' : 'Selesai! 🎉',
-              style: GoogleFonts.baloo2(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  color: _textDark,
-                  height: 1.1)),
-
-          const SizedBox(height: 8),
-
-          Text(
-              'Kamu sudah menyelesaikan\nsemua $_totalLevels level Raccoo Think!',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.baloo2(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _textMuted,
-                  height: 1.4)),
 
           const SizedBox(height: 20),
 
@@ -1982,10 +2013,6 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                    color: _zoneShadow, offset: Offset(4, 6), blurRadius: 0)
-              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2024,10 +2051,20 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   scale: v,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(Icons.star_rounded,
-                        size: 48,
-                        color:
-                            i < stars ? _gold : _gold.withValues(alpha: 0.22)),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(Icons.star_rounded,
+                            size: 62,
+                            color: const Color(0xFFB8860B).withValues(
+                                alpha: i < stars ? 1.0 : 0.22)),
+                        Icon(Icons.star_rounded,
+                            size: 56,
+                            color: i < stars
+                                ? _gold
+                                : _gold.withValues(alpha: 0.22)),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -2036,15 +2073,15 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
           const Spacer(),
 
-          if (stars < 3)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                  'Tidak apa-apa! Setiap latihan membuat kamu makin pintar! 💪',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
-                      fontSize: 16, color: _textMuted, height: 1.5)),
-            ),
+          // if (stars < 3)
+          //   Padding(
+          //     padding: const EdgeInsets.only(bottom: 12),
+          //     child: Text(
+          //         'Tidak apa-apa! Setiap latihan membuat kamu makin pintar! 💪',
+          //         textAlign: TextAlign.center,
+          //         style: GoogleFonts.dmSans(
+          //             fontSize: 16, color: _textMuted, height: 1.5)),
+          //   ),
 
           Row(
             children: [
@@ -2209,24 +2246,18 @@ class _QuestionBubble extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: style.bg.withValues(alpha: 0.72),
+        color: style.bg.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                '🦝',
-                style: TextStyle(fontSize: 20),
-              ),
+          ClipOval(
+            child: Image.asset(
+              'assets/images/characters/racoo_avatar_brown.png',
+              width: 36,
+              height: 36,
+              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(width: 10),
@@ -2336,7 +2367,7 @@ class _ChoiceCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _ChoiceAssetPreview(
               assetPath: imagePath,
@@ -2344,7 +2375,7 @@ class _ChoiceCard extends StatelessWidget {
               fallbackLabel: choice.label,
             ),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   width: 38,
@@ -2563,7 +2594,7 @@ class _LandscapeImageFallback extends StatelessWidget {
 
 // ─── Feedback Dialog ──────────────────────────────────────────────────────────
 
-class _FeedbackDialog extends StatelessWidget {
+class _FeedbackDialog extends StatefulWidget {
   final ThinkChoice choice;
   final VoidCallback onNext;
   final bool isLastQuestion;
@@ -2575,8 +2606,13 @@ class _FeedbackDialog extends StatelessWidget {
   });
 
   @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  @override
   Widget build(BuildContext context) {
-    final isCorrect = choice.isCorrect;
+    final isCorrect = widget.choice.isCorrect;
     final headerEmoji = isCorrect ? '🌟' : '💭';
     final headerText = isCorrect ? 'Betul!' : 'Yuk pikirkan lagi!';
     final accentColor = isCorrect ? _zoneColor : const Color(0xFFFF9A3C);
@@ -2626,37 +2662,43 @@ class _FeedbackDialog extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Raccoo mascot + feedback text
+            // GIF
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 180,
+                child: Image.asset(
+                  'assets/images/characters/racoo_walking.gif',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Feedback text
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('🦝', style: TextStyle(fontSize: 30)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(choice.feedback,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 16, height: 1.55, color: _textDark)),
-                  ),
-                ],
-              ),
+              child: Text(widget.choice.feedback,
+                  style: GoogleFonts.dmSans(
+                      fontSize: 16, height: 1.55, color: _textDark)),
             ),
 
             const SizedBox(height: 20),
 
             _ThinkButton(
-              label: isLastQuestion ? 'Lihat Skor Level →' : 'Lanjut →',
+              label: widget.isLastQuestion ? 'Lihat Skor Level' : 'Lanjut',
               color: accentColor,
               textColor: Colors.white,
-              icon: isLastQuestion
+              icon: widget.isLastQuestion
                   ? Icons.bar_chart_rounded
                   : Icons.arrow_forward_rounded,
-              onTap: onNext,
+              onTap: widget.onNext,
             ),
           ],
         ),
@@ -2747,3 +2789,53 @@ class _ThinkButton extends StatelessWidget {
     );
   }
 }
+
+
+class _Button extends StatelessWidget {
+  final String img;
+  final VoidCallback onTap;
+  final double width;
+  final double height;
+
+  const _Button({
+    required this.img,
+    required this.onTap,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Image.asset(
+        img,
+        width: width,
+        height: height,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFFC85A00),
+                  offset: Offset(2, 3),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.arrow_back_rounded,
+              color: Color(0xFF3D2B1A),
+              size: 28,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+

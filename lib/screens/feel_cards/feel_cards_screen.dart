@@ -1175,6 +1175,7 @@ class _SpeechBubble extends StatelessWidget {
     );
   }
 }
+
 class _Button extends StatelessWidget {
   final String img;
   final VoidCallback onTap;

@@ -183,6 +183,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   _MirrorTarget get _currentTarget => _targets[_roundIndex];
 
   bool _faceDetected = false;
+  FaceDetectionResult? _lastResult;
   bool _selfReportVisible = false;
   String _feedbackText = '';
 
@@ -428,7 +429,10 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   void _onDetectionResult(FaceDetectionResult result) {
     if (!mounted || _phase != _Phase.detecting) return;
 
-    setState(() => _faceDetected = result.faceFound);
+    setState(() {
+      _faceDetected = result.faceFound;
+      _lastResult = result.faceFound ? result : null;
+    });
 
     if (!result.faceFound) {
       if (_feedbackText.isNotEmpty) setState(() => _feedbackText = '');
@@ -994,6 +998,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                 _CameraFrame(
                   controller: controller,
                   faceDetected: _faceDetected,
+                  detectionResult: _lastResult,
                 ),
 
                 // Switch camera button — top-left, only when 2+ cameras available
@@ -1241,10 +1246,12 @@ class _RaccooTipBubble extends StatelessWidget {
 class _CameraFrame extends StatelessWidget {
   final CameraController? controller;
   final bool faceDetected;
+  final FaceDetectionResult? detectionResult;
 
   const _CameraFrame({
     required this.controller,
     required this.faceDetected,
+    this.detectionResult,
   });
 
   @override
@@ -1307,6 +1314,21 @@ class _CameraFrame extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+
+                  // Green bounding box + emotion label
+                  if (detectionResult?.faceBoundingBox != null &&
+                      detectionResult?.imageSize != null)
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _FaceBoxPainter(
+                          faceBox: detectionResult!.faceBoundingBox!,
+                          imageSize: detectionResult!.imageSize!,
+                          emotion: detectionResult!.emotion,
+                          mirrorX: controller?.description.lensDirection ==
+                              CameraLensDirection.front,
                         ),
                       ),
                     ),
@@ -1373,6 +1395,89 @@ class _FaceOvalPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Draws a green rectangle around the detected face and labels the emotion.
+class _FaceBoxPainter extends CustomPainter {
+  final Rect faceBox;
+  final Size imageSize;
+  final DetectedEmotion emotion;
+  final bool mirrorX;
+
+  const _FaceBoxPainter({
+    required this.faceBox,
+    required this.imageSize,
+    required this.emotion,
+    required this.mirrorX,
+  });
+
+  static const _emotionLabels = {
+    DetectedEmotion.happy: 'Happy 😊',
+    DetectedEmotion.sad: 'Sad 😢',
+    DetectedEmotion.angry: 'Angry 😠',
+    DetectedEmotion.fear: 'Fear 😨',
+    DetectedEmotion.disgust: 'Disgust 🤢',
+    DetectedEmotion.surprise: 'Surprise 😲',
+    DetectedEmotion.unknown: 'Unknown',
+  };
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scaleX = size.width / imageSize.width;
+    final scaleY = size.height / imageSize.height;
+
+    // Mirror X for front camera to match the flipped preview.
+    final left = mirrorX ? imageSize.width - faceBox.right : faceBox.left;
+    final right = mirrorX ? imageSize.width - faceBox.left : faceBox.right;
+
+    final scaledRect = Rect.fromLTRB(
+      left * scaleX,
+      faceBox.top * scaleY,
+      right * scaleX,
+      faceBox.bottom * scaleY,
+    );
+
+    // Green rectangle
+    canvas.drawRect(
+      scaledRect,
+      Paint()
+        ..color = const Color(0xFF00E676)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+
+    // Background pill behind the label
+    final label = _emotionLabels[emotion] ?? emotion.name;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final labelX = scaledRect.left;
+    final labelY = (scaledRect.top - textPainter.height - 6).clamp(0.0, size.height);
+    final pillRect = Rect.fromLTWH(
+      labelX - 4,
+      labelY - 2,
+      textPainter.width + 8,
+      textPainter.height + 4,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(pillRect, const Radius.circular(4)),
+      Paint()..color = const Color(0xCC00C853),
+    );
+    textPainter.paint(canvas, Offset(labelX, labelY));
+  }
+
+  @override
+  bool shouldRepaint(_FaceBoxPainter old) =>
+      old.faceBox != faceBox || old.emotion != emotion || old.mirrorX != mirrorX;
 }
 
 /// Banner "Tampakkan wajahmu!" saat tidak ada wajah di frame.
