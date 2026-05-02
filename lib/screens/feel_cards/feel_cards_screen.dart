@@ -158,7 +158,7 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
     super.initState();
     _audio = context.read<AudioService>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _audio.playBg(AudioAsset.bgMain);
+      if (mounted) _audio.playBg(AudioAsset.bgPlay);
     });
 
     _flipController = AnimationController(
@@ -205,7 +205,6 @@ class _FeelCardsScreenState extends State<FeelCardsScreen>
 
   @override
   void dispose() {
-    _audio.stopBg();
     _flipController.dispose();
     _raccooController.dispose();
     _entranceController.dispose();
@@ -1070,7 +1069,10 @@ class _CardBackState extends State<_CardBack> {
                               ),
                               const Spacer(),
                               GestureDetector(
-                                onTap: widget.onReplayAudio,
+                                onTap: () {
+                                  context.read<AudioService>().play(AudioAsset.normalClick);
+                                  widget.onReplayAudio();
+                                },
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(

@@ -1049,11 +1049,15 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   late Animation<double> _shakeAnimation;
   late Animation<double> _celebrationScale;
 
+  // ── Services ──────────────────────────────────────────────────────────────
+  late AudioService _audio;
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
+    _audio = context.read<AudioService>();
     _buildLevelScenarios();
 
     _cardSlideController = AnimationController(
@@ -1104,7 +1108,9 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AudioService>().play(AudioAsset.instructionSocialSituations);
+      if (!mounted) return;
+      _audio.playBg(AudioAsset.bgPlay);
+      _audio.play(AudioAsset.instructionSocialSituations);
       _checkResumeState();
     });
   }
@@ -1134,12 +1140,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              _audio.play(AudioAsset.normalClick);
+              Navigator.pop(ctx, false);
+            },
             child: Text('Mulai Baru',
                 style: GoogleFonts.dmSans(color: _textMuted)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              _audio.play(AudioAsset.normalClick);
+              Navigator.pop(ctx, true);
+            },
             child: Text('Ya, Lanjutkan',
                 style: GoogleFonts.dmSans(
                     color: _zoneColor, fontWeight: FontWeight.w700)),
@@ -1286,8 +1298,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
     _feedbackController.reset();
   }
 
+  bool _choiceLocked = false;
+
   Future<void> _onChoiceTap(ThinkChoice choice) async {
-    if (_phase != _Phase.choosing) return;
+    if (_phase != _Phase.choosing || _choiceLocked) return;
+    _choiceLocked = true;
     final progressProvider = context.read<ProgressProvider>();
     final audioService = context.read<AudioService>();
 
@@ -1311,6 +1326,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
     );
     if (!mounted) return;
     await _showFeedbackDialog(choice);
+    _choiceLocked = false;
   }
 
   Future<void> _showFeedbackDialog(ThinkChoice choice) async {
@@ -1331,15 +1347,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   void _onNext() {
     if (!_isLastQuestionInLevel) {
+      _audio.play(AudioAsset.normalClick);
       setState(() => _questionInLevel++);
       _startQuestion();
     } else {
+      _audio.play(AudioAsset.yeay);
       _celebrationController.forward(from: 0);
       setState(() => _phase = _Phase.levelResult);
     }
   }
 
   void _proceedToNextLevel() {
+    _audio.play(AudioAsset.normalClick);
     if (_currentLevel < _totalLevels) {
       setState(() {
         _currentLevel++;
@@ -1356,6 +1375,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   }
 
   void _retryLevel() {
+    _audio.play(AudioAsset.normalClick);
     final previousLevelCorrect = _levelCorrect;
     _buildLevelScenarios(_currentLevel);
     setState(() {
@@ -1386,12 +1406,18 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              _audio.play(AudioAsset.normalClick);
+              Navigator.pop(ctx, false);
+            },
             child: Text('Lanjut Bermain',
                 style: GoogleFonts.dmSans(color: _zoneColor)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              _audio.play(AudioAsset.normalClick);
+              Navigator.pop(ctx, true);
+            },
             child: Text('Ya, Keluar',
                 style: GoogleFonts.dmSans(
                     color: _errorRed, fontWeight: FontWeight.w600)),
@@ -1580,6 +1606,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             textColor: Colors.white,
             icon: Icons.play_arrow_rounded,
             onTap: () {
+              _audio.play(AudioAsset.normalClick);
               setState(() {
                 _questionInLevel = 0;
                 _levelCorrect = 0;
@@ -1696,6 +1723,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             width: 64,
             height: 64,
             onTap: () async {
+              _audio.play(AudioAsset.normalClick);
               final ok = await _confirmExit();
               if (ok && mounted) context.pop();
             },
@@ -2092,6 +2120,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   textColor: _zoneColor,
                   icon: Icons.replay_rounded,
                   onTap: () {
+                    _audio.play(AudioAsset.normalClick);
                     _buildLevelScenarios();
                     setState(() {
                       _currentLevel = 1;
@@ -2111,7 +2140,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                   color: _zoneColor,
                   textColor: Colors.white,
                   icon: Icons.home_rounded,
-                  onTap: () => context.pop(),
+                  onTap: () {
+                    _audio.play(AudioAsset.normalClick);
+                    context.pop();
+                  },
                 ),
               ),
             ],

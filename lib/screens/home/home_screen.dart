@@ -14,8 +14,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with RouteAware, WidgetsBindingObserver {
+    with WidgetsBindingObserver {
   late AudioService _audio;
+  GoRouter? _router;
 
   @override
   void initState() {
@@ -23,14 +24,27 @@ class _HomeScreenState extends State<HomeScreen>
     _audio = context.read<AudioService>();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _audio.playBg(AudioAsset.bgMain);
+      if (!mounted) return;
+      _audio.playBg(AudioAsset.bgMain);
+      _router = GoRouter.of(context);
+      _router!.routerDelegate.addListener(_onRouteChanged);
+    });
+  }
+
+  void _onRouteChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ModalRoute.of(context)?.isCurrent ?? false) {
+        _audio.playBg(AudioAsset.bgMain);
+      }
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _audio.playBg(AudioAsset.bgMain);
+       _audio.playBg(AudioAsset.bgMain);
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _audio.pauseBg();
@@ -39,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChanged);
     WidgetsBinding.instance.removeObserver(this);
     _audio.stopBg();
     super.dispose();

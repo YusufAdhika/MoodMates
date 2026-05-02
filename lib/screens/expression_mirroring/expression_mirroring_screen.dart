@@ -261,14 +261,13 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _audio.playBg(AudioAsset.bgMain);
+      _audio.playBg(AudioAsset.bgPlay);
       _audio.play(AudioAsset.instructionExpressionMirroring);
     });
   }
 
   @override
   void dispose() {
-    _audio.stopBg();
     _selfReportTimer?.cancel();
     _noFaceHintTimer?.cancel();
     _detectionSub?.cancel();
@@ -406,6 +405,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
 
   /// Lanjut ke ronde berikutnya atau ke layar selesai.
   void _nextRound() {
+    _audio.play(AudioAsset.normalClick);
     if (_roundIndex >= _targets.length - 1) {
       setState(() => _phase = _Phase.done);
       _matchController.forward(from: 0);
@@ -495,14 +495,20 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () {
+              _audio.play(AudioAsset.normalClick);
+              Navigator.pop(ctx, false);
+            },
             child: Text(
               'Lanjut Bermain',
               style: GoogleFonts.dmSans(color: _zoneColor),
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              _audio.play(AudioAsset.normalClick);
+              Navigator.pop(ctx, true);
+            },
             child: Text(
               'Ya, Keluar',
               style: GoogleFonts.dmSans(
@@ -815,7 +821,10 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
           _MirrorButton(
             label: 'Kembali ke Beranda',
             color: _zoneColor,
-            onTap: () => context.pop(),
+            onTap: () {
+              _audio.play(AudioAsset.normalClick);
+              context.pop();
+            },
           ),
           const SizedBox(height: 24),
         ],
@@ -838,6 +847,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
           // Tombol kembali
           GestureDetector(
             onTap: () async {
+              _audio.play(AudioAsset.normalClick);
               final shouldExit = await _confirmExit();
               if (shouldExit && mounted) context.pop();
             },
@@ -1069,6 +1079,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                     label: 'Sudah Coba! 👍',
                     color: _successGreen,
                     onTap: () {
+                      _audio.play(AudioAsset.normalClick);
                       setState(
                           () => _feedbackText = _currentTarget.feedbackMatch);
                       _onExpressionMatched();
@@ -1174,6 +1185,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                     label: 'Sudah Mencoba! 👍',
                     color: _successGreen,
                     onTap: () {
+                      _audio.play(AudioAsset.normalClick);
                       setState(
                           () => _feedbackText = _currentTarget.feedbackMatch);
                       _onExpressionMatched();
