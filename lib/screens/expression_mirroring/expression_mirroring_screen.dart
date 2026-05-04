@@ -442,7 +442,11 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
     // Hanya evaluasi emosi yang bisa dideteksi ML Kit.
     if (!_currentTarget.mlKitDetectable) return;
 
-    final matches = _emotionMatches(result.emotion, _currentTarget.emotion);
+    // Disgust: model FER2013 terlalu lemah untuk emosi ini (~547 training
+    // samples). Bypass — cukup wajah terdeteksi maka dianggap cocok.
+    final matches = (_currentTarget.emotion == Emotion.disgust)
+        ? true
+        : _emotionMatches(result.emotion, _currentTarget.emotion);
     if (matches) {
       _consecutiveMatchCount++;
       if (_consecutiveMatchCount >= _requiredConsecutiveMatches) {
