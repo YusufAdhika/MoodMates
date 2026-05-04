@@ -1829,7 +1829,11 @@ class _VideoCircleState extends State<_VideoCircle> {
   Future<void> _initVideo() async {
     final path = widget.videoPath;
     if (path == null) return;
-    final controller = VideoPlayerController.asset(path);
+    final controller = VideoPlayerController.asset(
+        path,
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true)
+    );
+
     if (mounted) setState(() => _controller = controller);
     try {
       await controller.initialize();

@@ -77,7 +77,7 @@ const List<_EmotionCardData> _cards = [
     'Ini namanya MARAH.\nRasanya panas di dalam dan ingin berteriak.\nRaccoo juga pernah marah kok!',
     whenExamples: 'Mainan diambil · Tidak didengarkan · Antrian diserobot',
     audioAsset: AudioAsset.emotionAngry,
-    videoPath: 'assets/video/raccoo_angry.mp4.mp4',
+    videoPath: 'assets/video/raccoo_angry.mp4',
   ),
   _EmotionCardData(
     emotion: Emotion.scared,
@@ -889,6 +889,20 @@ class _CardBackState extends State<_CardBack> {
   VideoPlayerController? _videoController;
   bool _videoReady = false;
 
+  void _onVideoStatusChanged() {
+    final vc = _videoController;
+    if (vc == null) return;
+    final v = vc.value;
+    debugPrint(
+      '[VideoStatus] ${widget.card.emotion.name} | '
+      'playing=${v.isPlaying} | '
+      'buffering=${v.isBuffering} | '
+      'pos=${v.position.inMilliseconds}ms / ${v.duration.inMilliseconds}ms | '
+      'hasError=${v.hasError}'
+      '${v.hasError ? " | error=${v.errorDescription}" : ""}',
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -898,7 +912,10 @@ class _CardBackState extends State<_CardBack> {
   @override
   void didUpdateWidget(_CardBack oldWidget) {
     super.didUpdateWidget(oldWidget);
+    debugPrint('[CardBack] didUpdateWidget — old: ${oldWidget.card.videoPath} → new: ${widget.card.videoPath}');
     if (oldWidget.card.videoPath != widget.card.videoPath) {
+      debugPrint('[CardBack] videoPath changed, disposing old controller and re-initialising');
+      _videoController?.removeListener(_onVideoStatusChanged);
       _videoController?.dispose();
       _videoController = null;
       _videoReady = false;
@@ -906,20 +923,47 @@ class _CardBackState extends State<_CardBack> {
     }
   }
 
+  void _togglePlay() {
+    final vc = _videoController;
+    if (vc == null) return;
+    if (vc.value.isPlaying) {
+      debugPrint(
+        '[VideoStatus] ${widget.card.emotion.name} | '
+            'playing=${vc.value.isPlaying} | ',
+      );
+      vc.pause();
+    } else {
+      vc.play();
+    }
+    setState(() {});
+  }
+
   Future<void> _initVideo() async {
     final path = widget.card.videoPath;
     if (path == null) return;
-    final controller = VideoPlayerController.asset(path);
+    debugPrint('[CardBack] _initVideo — loading: $path');
+    final controller = VideoPlayerController.asset(
+      path,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
     _videoController = controller;
-    await controller.initialize();
-    controller.setLooping(true);
-    controller.setVolume(0);
-    controller.play();
-    if (mounted) setState(() => _videoReady = true);
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+      await controller.setVolume(0);
+      controller.addListener(_onVideoStatusChanged);
+      await controller.play();
+      debugPrint('[CardBack] _initVideo — playing: $path');
+      if (mounted) setState(() => _videoReady = true);
+    } catch (e) {
+      debugPrint('[CardBack] _initVideo — FAILED: $path\n$e');
+    }
   }
 
   @override
   void dispose() {
+    debugPrint('[CardBack] dispose — releasing controller for: ${widget.card.videoPath}');
+    _videoController?.removeListener(_onVideoStatusChanged);
     _videoController?.dispose();
     super.dispose();
   }
@@ -964,9 +1008,36 @@ class _CardBackState extends State<_CardBack> {
                   topRight: Radius.circular(24),
                 ),
                 child: _videoReady && _videoController != null
-                    ? AspectRatio(
-                  aspectRatio: _videoController!.value.aspectRatio,
-                  child: VideoPlayer(_videoController!),
+                    ? GestureDetector(
+                  onTap: _togglePlay,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: _videoController!.value.aspectRatio,
+                        child: VideoPlayer(_videoController!),
+                      ),
+                      ValueListenableBuilder<VideoPlayerValue>(
+                        valueListenable: _videoController!,
+                        builder: (_, value, __) => AnimatedOpacity(
+                          opacity: value.isPlaying ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 48,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 )
                     : Container(
                   width: double.infinity,
