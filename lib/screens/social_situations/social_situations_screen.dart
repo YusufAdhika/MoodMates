@@ -1057,6 +1057,10 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
   @override
   void initState() {
     super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     _audio = context.read<AudioService>();
     _buildLevelScenarios();
 
