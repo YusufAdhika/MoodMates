@@ -96,7 +96,7 @@ const List<_MirrorTarget> _allTargets = [
     feedbackMatch: 'Kamu sudah berhasil! Wajah marahnya keren!',
     feedbackTrying: 'Kerutkan alismu lebih kuat, yuk!',
     icon: Icons.mood_bad_rounded,
-    videoPath: 'assets/video/raccoo_angry.mp4.mp4',
+    videoPath: 'assets/video/raccoo_angry.mp4',
   ),
   _MirrorTarget(
     emotion: Emotion.scared,
