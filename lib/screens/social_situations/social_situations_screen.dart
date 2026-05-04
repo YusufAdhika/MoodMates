@@ -984,6 +984,11 @@ const List<ThinkScenario> thinkScenarios = [
   ),
 ];
 
+// ─── Responsive helper ────────────────────────────────────────────────────────
+
+bool _isTablet(BuildContext context) =>
+    MediaQuery.of(context).size.shortestSide >= 600;
+
 // ─── Phase ────────────────────────────────────────────────────────────────────
 
 enum _Phase { levelIntro, choosing, revealed, levelResult, done }
@@ -1458,16 +1463,24 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             ),
           ),
           Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: switch (_phase) {
-            _Phase.levelIntro => _buildLevelIntro(),
-            _Phase.choosing || _Phase.revealed => _buildGame(),
-            _Phase.levelResult => _buildLevelResult(),
-            _Phase.done => _buildDoneScreen(),
-          },
-        ),
-      ),
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: _isTablet(context) ? 640 : double.infinity,
+                  ),
+                  child: switch (_phase) {
+                    _Phase.levelIntro => _buildLevelIntro(),
+                    _Phase.choosing || _Phase.revealed => _buildGame(),
+                    _Phase.levelResult => _buildLevelResult(),
+                    _Phase.done => _buildDoneScreen(),
+                  },
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1477,12 +1490,22 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   Widget _buildLevelIntro() {
     final goal = _levelGoals[_currentLevel]!;
+    final tablet = _isTablet(context);
+    final hPad = tablet ? 32.0 : 24.0;
+    final raccooSize = tablet ? 200.0 : 160.0;
+    final nodeActive = tablet ? 64.0 : 52.0;
+    final nodeInactive = tablet ? 54.0 : 44.0;
+    final nodeFontActive = tablet ? 26.0 : 22.0;
+    final nodeFontInactive = tablet ? 21.0 : 18.0;
+    final levelLabelFont = tablet ? 16.0 : 14.0;
+    final goalLabelFont = tablet ? 16.0 : 14.0;
+    final goalFont = tablet ? 24.0 : 20.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          SizedBox(height: tablet ? 28.0 : 20.0),
 
           // Level path (1 → 2 → 3)
           Row(
@@ -1492,7 +1515,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(Icons.arrow_forward_ios_rounded,
-                      size: 14, color: _textMuted.withValues(alpha: 0.4)),
+                      size: tablet ? 16 : 14,
+                      color: _textMuted.withValues(alpha: 0.4)),
                 );
               }
               final level = i ~/ 2 + 1;
@@ -1500,8 +1524,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               final isDone = level < _currentLevel;
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                width: isActive ? 52 : 44,
-                height: isActive ? 52 : 44,
+                width: isActive ? nodeActive : nodeInactive,
+                height: isActive ? nodeActive : nodeInactive,
                 decoration: BoxDecoration(
                   color: isDone
                       ? _successGreen
@@ -1521,24 +1545,23 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 ),
                 child: Center(
                   child: isDone
-                      ? const Icon(Icons.check_rounded,
-                          color: Colors.white, size: 22)
+                      ? Icon(Icons.check_rounded,
+                          color: Colors.white, size: tablet ? 26.0 : 22.0)
                       : Text('$level',
                           style: GoogleFonts.baloo2(
-                            fontSize: isActive ? 22 : 18,
+                            fontSize: isActive ? nodeFontActive : nodeFontInactive,
                             fontWeight: FontWeight.w800,
-                            color:
-                                isActive || isDone ? Colors.white : _zoneColor,
+                            color: isActive || isDone ? Colors.white : _zoneColor,
                           )),
                 ),
               );
             }),
           ),
 
-          const SizedBox(height: 4),
+          SizedBox(height: tablet ? 6.0 : 4.0),
           Text('Level $_currentLevel dari $_totalLevels',
               style: GoogleFonts.dmSans(
-                  fontSize: 14,
+                  fontSize: levelLabelFont,
                   fontWeight: FontWeight.w600,
                   color: _textMuted)),
 
@@ -1552,8 +1575,8 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               child: child,
             ),
             child: Container(
-              width: 160,
-              height: 160,
+              width: raccooSize,
+              height: raccooSize,
               decoration: BoxDecoration(
                 color: const Color(0xFFFF9A3C).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
@@ -1561,20 +1584,22 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               child: ClipOval(
                 child: Image.asset(
                   'assets/images/characters/racoo_avatar_brown.png',
-                  width: 160,
-                  height: 160,
+                  width: raccooSize,
+                  height: raccooSize,
                   fit: BoxFit.cover,
                 ),
               ),
             ),
           ),
 
-          const SizedBox(height: 28),
+          SizedBox(height: tablet ? 36.0 : 28.0),
 
           // Goal bubble
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: EdgeInsets.symmetric(
+                horizontal: tablet ? 28.0 : 24.0,
+                vertical: tablet ? 24.0 : 20.0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -1587,14 +1612,14 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               children: [
                 Text('Tujuan belajar kita:',
                     style: GoogleFonts.dmSans(
-                        fontSize: 14,
+                        fontSize: goalLabelFont,
                         fontWeight: FontWeight.w600,
                         color: _textMuted)),
                 const SizedBox(height: 8),
                 Text(goal,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.baloo2(
-                        fontSize: 20,
+                        fontSize: goalFont,
                         fontWeight: FontWeight.w700,
                         color: _textDark,
                         height: 1.4)),
@@ -1619,7 +1644,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             },
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: tablet ? 32.0 : 24.0),
         ],
       ),
     );
@@ -1629,12 +1654,14 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   Widget _buildGame() {
     final card = _current;
+    final tablet = _isTablet(context);
+    final hPad = tablet ? 24.0 : 16.0;
     return Column(
       children: [
         _buildTopBar(),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+            padding: EdgeInsets.fromLTRB(hPad, 10, hPad, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -1717,15 +1744,19 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
 
   Widget _buildTopBar() {
     final style = _styleOf(_current.theme);
+    final tablet = _isTablet(context);
+    final hPad = tablet ? 24.0 : 16.0;
+    final btnSize = tablet ? 72.0 : 64.0;
+    final pillFont = tablet ? 14.0 : 12.0;
+    final counterFont = tablet ? 17.0 : 15.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: EdgeInsets.fromLTRB(hPad, hPad, hPad, 4),
       child: Row(
         children: [
-
           _Button(
             img: 'assets/images/ui/ic_left_feel.png',
-            width: 64,
-            height: 64,
+            width: btnSize,
+            height: btnSize,
             onTap: () async {
               _audio.play(AudioAsset.normalClick);
               final ok = await _confirmExit();
@@ -1748,13 +1779,13 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 Container(
                   width: 7,
                   height: 7,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                       color: Colors.white, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 5),
                 Text(_current.theme,
                     style: GoogleFonts.dmSans(
-                        fontSize: 12,
+                        fontSize: pillFont,
                         fontWeight: FontWeight.w700,
                         color: Colors.white)),
               ],
@@ -1795,7 +1826,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                 const SizedBox(width: 8),
                 Text('${_questionInLevel + 1}/$_questionsThisLevel',
                     style: GoogleFonts.baloo2(
-                        fontSize: 15,
+                        fontSize: counterFont,
                         fontWeight: FontWeight.w700,
                         color: Colors.white)),
               ],
@@ -1831,9 +1862,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             : _levelCorrect > 0
                 ? 1
                 : 0;
+    final tablet = _isTablet(context);
+    final hPad = tablet ? 32.0 : 24.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         children: [
           const SizedBox(height: 24),
@@ -1855,7 +1888,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
             ),
             child: Text('Level $_currentLevel Selesai!',
                 style: GoogleFonts.baloo2(
-                    fontSize: 18,
+                    fontSize: tablet ? 22.0 : 18.0,
                     fontWeight: FontWeight.w700,
                     color: Colors.white)),
           ),
@@ -1901,7 +1934,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                       ? (isPerfect ? 'Sempurna! 🏆' : 'Bagus! 🎉')
                       : 'Hampir! Coba lagi ya! 💪',
                   style: GoogleFonts.baloo2(
-                      fontSize: 32,
+                      fontSize: tablet ? 38.0 : 32.0,
                       fontWeight: FontWeight.w800,
                       color: _textDark,
                       height: 1.1),
@@ -1913,7 +1946,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                       : 'Kamu menjawab $_levelCorrect dari $_questionsThisLevel soal benar.\nRaccoo percaya kamu pasti bisa!',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.baloo2(
-                      fontSize: 17,
+                      fontSize: tablet ? 20.0 : 17.0,
                       fontWeight: FontWeight.w600,
                       color: _textMuted,
                       height: 1.4),
@@ -2000,9 +2033,11 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
         : _totalCorrect >= (_totalQuestionsInRun * 2 / 3).ceil()
             ? 2
             : 1;
+    final tablet = _isTablet(context);
+    final hPad = tablet ? 32.0 : 24.0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: hPad),
       child: Column(
         children: [
           const SizedBox(height: 24),
@@ -2018,7 +2053,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
               children: [
                 Text(stars == 3 ? 'Sempurna! 🏆' : 'Selesai! 🎉',
                     style: GoogleFonts.baloo2(
-                        fontSize: 36,
+                        fontSize: tablet ? 42.0 : 36.0,
                         fontWeight: FontWeight.w800,
                         color: _textDark,
                         height: 1.1)),
@@ -2029,7 +2064,7 @@ class _SocialSituationsScreenState extends State<SocialSituationsScreen>
                     'Kamu sudah menyelesaikan\nsemua $_totalLevels level Raccoo Think!',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.baloo2(
-                        fontSize: 18,
+                        fontSize: tablet ? 22.0 : 18.0,
                         fontWeight: FontWeight.w700,
                         color: _textMuted,
                         height: 1.4)),
@@ -2168,6 +2203,7 @@ class _SituationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tablet = _isTablet(context);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -2181,43 +2217,23 @@ class _SituationCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(tablet ? 18.0 : 14.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Row(
-          //   children: [
-          //     Container(
-          //       padding:
-          //           const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          //       decoration: BoxDecoration(
-          //         color: style.bg,
-          //         borderRadius: BorderRadius.circular(999),
-          //       ),
-          //       child: Text(
-          //         scenario.theme,
-          //         style: GoogleFonts.dmSans(
-          //           fontSize: 12,
-          //           fontWeight: FontWeight.w700,
-          //           color: style.accent,
-          //         ),
-          //       ),
-          //     ),
-          //   ],
-          // ),
-          const SizedBox(height: 12),
+          SizedBox(height: tablet ? 16.0 : 12.0),
           _LandscapeAssetImage(
             assetPath: scenario.effectiveImagePath,
             fallbackEmoji: scenario.emoji,
             fallbackLabel: scenario.situationLabel,
-            height: 214,
+            height: tablet ? 280.0 : 214.0,
             borderRadius: 18,
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: tablet ? 18.0 : 14.0),
           Text(
             scenario.situationLabel,
             style: GoogleFonts.baloo2(
-              fontSize: 22,
+              fontSize: tablet ? 26.0 : 22.0,
               fontWeight: FontWeight.w800,
               color: _textDark,
               height: 1.05,
@@ -2227,7 +2243,7 @@ class _SituationCard extends StatelessWidget {
           Text(
             scenario.situationNarration,
             style: GoogleFonts.dmSans(
-              fontSize: 15.5,
+              fontSize: tablet ? 18.0 : 15.5,
               height: 1.55,
               color: _textMuted,
             ),
@@ -2278,9 +2294,11 @@ class _QuestionBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = _styleOf(theme);
+    final tablet = _isTablet(context);
+    final avatarSize = tablet ? 48.0 : 36.0;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      padding: EdgeInsets.all(tablet ? 18.0 : 14.0),
       decoration: BoxDecoration(
         color: style.bg.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(18),
@@ -2291,8 +2309,8 @@ class _QuestionBubble extends StatelessWidget {
           ClipOval(
             child: Image.asset(
               'assets/images/characters/racoo_avatar_brown.png',
-              width: 36,
-              height: 36,
+              width: avatarSize,
+              height: avatarSize,
               fit: BoxFit.cover,
             ),
           ),
@@ -2304,7 +2322,7 @@ class _QuestionBubble extends StatelessWidget {
                 Text(
                   'Pertanyaan',
                   style: GoogleFonts.dmSans(
-                    fontSize: 11,
+                    fontSize: tablet ? 13.0 : 11.0,
                     fontWeight: FontWeight.w700,
                     color: style.accent,
                     letterSpacing: 0.2,
@@ -2314,7 +2332,7 @@ class _QuestionBubble extends StatelessWidget {
                 Text(
                   question,
                   style: GoogleFonts.baloo2(
-                    fontSize: 20,
+                    fontSize: tablet ? 24.0 : 20.0,
                     fontWeight: FontWeight.w800,
                     color: _textDark,
                     height: 1.15,
@@ -2401,7 +2419,7 @@ class _ChoiceCard extends StatelessWidget {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(_isTablet(context) ? 18.0 : 14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -2413,35 +2431,42 @@ class _ChoiceCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      optionLabel,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: badgeTextColor,
+                Builder(builder: (ctx) {
+                  final t = _isTablet(ctx);
+                  final badgeSize = t ? 48.0 : 38.0;
+                  return Container(
+                    width: badgeSize,
+                    height: badgeSize,
+                    decoration: BoxDecoration(
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        optionLabel,
+                        style: GoogleFonts.baloo2(
+                          fontSize: t ? 22.0 : 18.0,
+                          fontWeight: FontWeight.w800,
+                          color: badgeTextColor,
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                }),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    choice.label,
-                    style: GoogleFonts.baloo2(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: _textDark,
-                      height: 1.25,
-                    ),
-                  ),
+                  child: Builder(builder: (ctx) {
+                    final t = _isTablet(ctx);
+                    return Text(
+                      choice.label,
+                      style: GoogleFonts.baloo2(
+                        fontSize: t ? 20.0 : 17.0,
+                        fontWeight: FontWeight.w700,
+                        color: _textDark,
+                        height: 1.25,
+                      ),
+                    );
+                  }),
                 ),
               ],
             ),
@@ -2515,13 +2540,14 @@ class _ChoiceAssetPreviewState extends State<_ChoiceAssetPreview> {
           return const SizedBox.shrink();
         }
 
+        final tablet = _isTablet(context);
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _LandscapeAssetImage(
             assetPath: widget.assetPath,
             fallbackEmoji: widget.fallbackEmoji,
             fallbackLabel: widget.fallbackLabel,
-            height: 110,
+            height: tablet ? 150.0 : 110.0,
             borderRadius: 16,
           ),
         );
@@ -2652,10 +2678,13 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
     final headerEmoji = isCorrect ? '🌟' : '💭';
     final headerText = isCorrect ? 'Betul!' : 'Yuk pikirkan lagi!';
     final accentColor = isCorrect ? _zoneColor : const Color(0xFFFF9A3C);
+    final tablet = _isTablet(context);
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+      insetPadding: tablet
+          ? const EdgeInsets.symmetric(horizontal: 80, vertical: 60)
+          : const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -2703,7 +2732,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
                 width: double.infinity,
-                height: 180,
+                height: tablet ? 220.0 : 180.0,
                 child: Image.asset(
                   'assets/images/characters/racoo_walking.gif',
                   fit: BoxFit.cover,
@@ -2715,14 +2744,16 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
 
             // Feedback text
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(tablet ? 20.0 : 16.0),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(widget.choice.feedback,
                   style: GoogleFonts.dmSans(
-                      fontSize: 16, height: 1.55, color: _textDark)),
+                      fontSize: tablet ? 18.0 : 16.0,
+                      height: 1.55,
+                      color: _textDark)),
             ),
 
             const SizedBox(height: 20),
@@ -2760,14 +2791,19 @@ class _ScoreStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tablet = _isTablet(context);
     return Column(
       children: [
-        Icon(icon, size: 22, color: color),
+        Icon(icon, size: tablet ? 28.0 : 22.0, color: color),
         const SizedBox(height: 4),
         Text(value,
             style: GoogleFonts.baloo2(
-                fontSize: 24, fontWeight: FontWeight.w800, color: color)),
-        Text(label, style: GoogleFonts.dmSans(fontSize: 12, color: _textMuted)),
+                fontSize: tablet ? 30.0 : 24.0,
+                fontWeight: FontWeight.w800,
+                color: color)),
+        Text(label,
+            style: GoogleFonts.dmSans(
+                fontSize: tablet ? 14.0 : 12.0, color: _textMuted)),
       ],
     );
   }
@@ -2790,10 +2826,11 @@ class _ThinkButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tablet = _isTablet(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 64,
+        height: tablet ? 72.0 : 64.0,
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(16),
@@ -2812,11 +2849,11 @@ class _ThinkButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20, color: textColor),
+            Icon(icon, size: tablet ? 24.0 : 20.0, color: textColor),
             const SizedBox(width: 8),
             Text(label,
                 style: GoogleFonts.baloo2(
-                    fontSize: 17,
+                    fontSize: tablet ? 20.0 : 17.0,
                     fontWeight: FontWeight.w700,
                     color: textColor)),
           ],

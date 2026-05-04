@@ -565,6 +565,10 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   // ── Camera Initializing ───────────────────────────────────────────────────
 
   Widget _buildInitializing() {
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final iconContainerSize = isTablet ? 130.0 : 100.0;
+    final iconSize = isTablet ? 76.0 : 60.0;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -576,21 +580,20 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
               child: child,
             ),
             child: Container(
-              width: 100,
-              height: 100,
+              width: iconContainerSize,
+              height: iconContainerSize,
               decoration: BoxDecoration(
                 color: _zoneColor.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child:
-                  const Icon(Icons.camera_front_rounded, size: 60, color: _zoneColor),
+              child: Icon(Icons.camera_front_rounded, size: iconSize, color: _zoneColor),
             ),
           ),
           const SizedBox(height: 24),
           Text(
             'Menyiapkan kamera...',
             style: GoogleFonts.baloo2(
-              fontSize: 20,
+              fontSize: isTablet ? 24.0 : 20.0,
               fontWeight: FontWeight.w700,
               color: _textDark,
             ),
@@ -598,7 +601,10 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
           const SizedBox(height: 8),
           Text(
             'Tunggu sebentar ya! 📷',
-            style: GoogleFonts.dmSans(fontSize: 16, color: _textMuted),
+            style: GoogleFonts.dmSans(
+              fontSize: isTablet ? 18.0 : 16.0,
+              color: _textMuted,
+            ),
           ),
           const SizedBox(height: 24),
           const CircularProgressIndicator(color: _zoneColor),
@@ -610,228 +616,269 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   // ── Main Game Screen (Camera Mode) ────────────────────────────────────────
 
   Widget _buildGameScreen() {
-    return Column(
-      children: [
-        _buildTopBar(),
-        _buildTargetPanel(),
-        Expanded(child: _buildCameraPanel()),
-      ],
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    final contentW = isTablet ? 520.0 : size.width;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: contentW),
+        child: Column(
+          children: [
+            _buildTopBar(isTablet: isTablet),
+            _buildTargetPanel(isTablet: isTablet),
+            Expanded(child: _buildCameraPanel(isTablet: isTablet)),
+          ],
+        ),
+      ),
     );
   }
 
   // ── No Camera Screen (Fallback) ───────────────────────────────────────────
 
   Widget _buildNoCameraScreen() {
-    return Column(
-      children: [
-        _buildTopBar(),
-        _buildTargetPanel(),
-        Expanded(child: _buildFallbackPanel()),
-      ],
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    final contentW = isTablet ? 520.0 : size.width;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: contentW),
+        child: Column(
+          children: [
+            _buildTopBar(isTablet: isTablet),
+            _buildTargetPanel(isTablet: isTablet),
+            Expanded(child: _buildFallbackPanel(isTablet: isTablet)),
+          ],
+        ),
+      ),
     );
   }
 
   // ── Matched Screen ────────────────────────────────────────────────────────
 
   Widget _buildMatchedScreen() {
-    return Column(
-      children: [
-        _buildTopBar(),
-        Expanded(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: ScaleTransition(
-                scale: _matchScaleAnimation,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Confetti icon
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        color: _successGreen.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: _VideoCircle(
-                        size: 140,
-                        videoPath: _currentTarget.videoPath,
-                        fallbackIcon: _currentTarget.icon,
-                        fallbackColor: _successGreen,
-                        fallbackBg: _successGreen.withValues(alpha: 0.15),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '⭐ Berhasil!',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: _textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: _zoneShadow,
-                            offset: Offset(3, 5),
-                            blurRadius: 0,
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    final contentW = isTablet ? 520.0 : size.width;
+    final videoSize = isTablet ? 180.0 : 140.0;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: contentW),
+        child: Column(
+          children: [
+            _buildTopBar(isTablet: isTablet),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(isTablet ? 40.0 : 32.0),
+                  child: ScaleTransition(
+                    scale: _matchScaleAnimation,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: videoSize,
+                          height: videoSize,
+                          decoration: BoxDecoration(
+                            color: _successGreen.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
                           ),
-                        ],
-                      ),
-                      child: Text(
-                        _feedbackText,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.baloo2(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: _textDark,
-                          height: 1.4,
+                          child: _VideoCircle(
+                            size: videoSize,
+                            videoPath: _currentTarget.videoPath,
+                            fallbackIcon: _currentTarget.icon,
+                            fallbackColor: _successGreen,
+                            fallbackBg: _successGreen.withValues(alpha: 0.15),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 24),
+                        Text(
+                          '⭐ Berhasil!',
+                          style: GoogleFonts.baloo2(
+                            fontSize: isTablet ? 40.0 : 32.0,
+                            fontWeight: FontWeight.w800,
+                            color: _textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: _zoneShadow,
+                                offset: Offset(3, 5),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            _feedbackText,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.baloo2(
+                              fontSize: isTablet ? 22.0 : 18.0,
+                              fontWeight: FontWeight.w700,
+                              color: _textDark,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        _MirrorButton(
+                          label: _roundIndex < _targets.length - 1
+                              ? 'Lanjut →'
+                              : 'Selesai! 🎉',
+                          color: _roundIndex < _targets.length - 1
+                              ? _zoneColor
+                              : _successGreen,
+                          onTap: _nextRound,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 32),
-                    _MirrorButton(
-                      label: _roundIndex < _targets.length - 1
-                          ? 'Lanjut →'
-                          : 'Selesai! 🎉',
-                      color: _roundIndex < _targets.length - 1
-                          ? _zoneColor
-                          : _successGreen,
-                      onTap: _nextRound,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   // ── Done Screen ───────────────────────────────────────────────────────────
 
   Widget _buildDoneScreen() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          AnimatedBuilder(
-            animation: _raccooFloatAnimation,
-            builder: (context, child) => Transform.translate(
-              offset: Offset(0, _raccooFloatAnimation.value),
-              child: child,
-            ),
-            child: _VideoCircle(
-              size: 180,
-              videoPath: 'assets/video/raccoo_happy.mp4',
-              fallbackIcon: Icons.sentiment_very_satisfied_rounded,
-              fallbackColor: _zoneColor,
-              fallbackBg: _zoneColor.withValues(alpha: 0.15),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Kamu Juara! 🏆',
-            style: GoogleFonts.baloo2(
-              fontSize: 36,
-              fontWeight: FontWeight.w800,
-              color: _textDark,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Kamu sudah berhasil meniru\n semua ${_targets.length} ekspresi Raccoo!',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.baloo2(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: _textMuted,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Stars
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              3,
-              (i) => TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 400 + i * 180),
-                curve: const Cubic(0.34, 1.56, 0.64, 1),
-                builder: (context, v, _) => Transform.scale(
-                  scale: v,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Icon(
-                      Icons.star_rounded,
-                      size: 52,
-                      color: Color(0xFFFFD54F),
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide >= 600;
+    final contentW = isTablet ? 520.0 : size.width;
+    final videoSize = isTablet ? 220.0 : 180.0;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: contentW),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              AnimatedBuilder(
+                animation: _raccooFloatAnimation,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(0, _raccooFloatAnimation.value),
+                  child: child,
+                ),
+                child: _VideoCircle(
+                  size: videoSize,
+                  videoPath: 'assets/video/raccoo_happy.mp4',
+                  fallbackIcon: Icons.sentiment_very_satisfied_rounded,
+                  fallbackColor: _zoneColor,
+                  fallbackBg: _zoneColor.withValues(alpha: 0.15),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Kamu Juara! 🏆',
+                style: GoogleFonts.baloo2(
+                  fontSize: isTablet ? 44.0 : 36.0,
+                  fontWeight: FontWeight.w800,
+                  color: _textDark,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Kamu sudah berhasil meniru\n semua ${_targets.length} ekspresi Raccoo!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.baloo2(
+                  fontSize: isTablet ? 22.0 : 18.0,
+                  fontWeight: FontWeight.w700,
+                  color: _textMuted,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Stars
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  3,
+                  (i) => TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: Duration(milliseconds: 400 + i * 180),
+                    curve: const Cubic(0.34, 1.56, 0.64, 1),
+                    builder: (context, v, _) => Transform.scale(
+                      scale: v,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(
+                          Icons.star_rounded,
+                          size: isTablet ? 64.0 : 52.0,
+                          color: const Color(0xFFFFD54F),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Emotion chips recap
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: _targets.map((t) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _zoneColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: _zoneColor.withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(t.icon, size: 18, color: _zoneColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      t.emotion.labelId,
-                      style: GoogleFonts.baloo2(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: _textDark,
+              const SizedBox(height: 16),
+              // Emotion chips recap
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: _targets.map((t) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _zoneColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: _zoneColor.withValues(alpha: 0.4),
+                        width: 1.5,
                       ),
                     ),
-                  ],
-                ),
-              );
-            }).toList(),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(t.icon, size: isTablet ? 22.0 : 18.0, color: _zoneColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          t.emotion.labelId,
+                          style: GoogleFonts.baloo2(
+                            fontSize: isTablet ? 18.0 : 16.0,
+                            fontWeight: FontWeight.w700,
+                            color: _textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+              const Spacer(),
+              _MirrorButton(
+                label: 'Kembali ke Beranda',
+                color: _zoneColor,
+                onTap: () {
+                  _audio.play(AudioAsset.normalClick);
+                  context.pop();
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
-          const Spacer(),
-          _MirrorButton(
-            label: 'Kembali ke Beranda',
-            color: _zoneColor,
-            onTap: () {
-              _audio.play(AudioAsset.normalClick);
-              context.pop();
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
@@ -839,7 +886,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   // ── Sub-builders ──────────────────────────────────────────────────────────
 
   /// Top bar: tombol kembali + progress ronde.
-  Widget _buildTopBar() {
+  Widget _buildTopBar({bool isTablet = false}) {
     final isDone = _phase == _Phase.done;
     final currentRound = isDone ? _targets.length : _roundIndex + 1;
     final totalRounds = _targets.length;
@@ -875,14 +922,14 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                 Text(
                   'Ronde $currentRound / $totalRounds',
                   style: GoogleFonts.dmSans(
-                    fontSize: 13,
+                    fontSize: isTablet ? 15.0 : 13.0,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
-                  width: 100,
+                  width: isTablet ? 130.0 : 100.0,
                   height: 6,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(999),
@@ -903,8 +950,9 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   }
 
   /// Panel atas: ilustrasi Raccoo + instruksi + tip.
-  Widget _buildTargetPanel() {
+  Widget _buildTargetPanel({bool isTablet = false}) {
     final target = _currentTarget;
+    final raccooSize = isTablet ? 120.0 : 90.0;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -924,8 +972,8 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                 child: ScaleTransition(
                   scale: _pulseAnimation,
                   child: Container(
-                    width: 90,
-                    height: 90,
+                    width: raccooSize,
+                    height: raccooSize,
                     decoration: BoxDecoration(
                       color: _zoneColor.withValues(alpha: 0.18),
                       shape: BoxShape.circle,
@@ -935,7 +983,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                       ),
                     ),
                     child: _VideoCircle(
-                      size: 90,
+                      size: raccooSize,
                       videoPath: target.videoPath,
                       fallbackIcon: target.icon,
                       fallbackColor: _zoneColor,
@@ -964,7 +1012,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                       child: Text(
                         target.emotion.labelId.toUpperCase(),
                         style: GoogleFonts.baloo2(
-                          fontSize: 12,
+                          fontSize: isTablet ? 14.0 : 12.0,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                           letterSpacing: 1,
@@ -975,7 +1023,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                     Text(
                       target.instruction,
                       style: GoogleFonts.baloo2(
-                        fontSize: 17,
+                        fontSize: isTablet ? 20.0 : 17.0,
                         fontWeight: FontWeight.w700,
                         color: _textDark,
                         height: 1.3,
@@ -997,7 +1045,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   }
 
   /// Panel kamera: preview + overlay deteksi.
-  Widget _buildCameraPanel() {
+  Widget _buildCameraPanel({bool isTablet = false}) {
     final controller = _cameraController;
 
     return Padding(
@@ -1112,7 +1160,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                             Text(
                               'Kamera mendeteksi ekspresimu otomatis!',
                               style: GoogleFonts.dmSans(
-                                fontSize: 16,
+                                fontSize: isTablet ? 18.0 : 16.0,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
@@ -1125,7 +1173,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                         'Coba tirukan dulu, tombol akan muncul sebentar lagi...',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.dmSans(
-                          fontSize: 12,
+                          fontSize: isTablet ? 14.0 : 12.0,
                           color: _textMuted,
                         ),
                       ),
@@ -1136,7 +1184,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
   }
 
   /// Panel fallback: panduan animasi tanpa kamera.
-  Widget _buildFallbackPanel() {
+  Widget _buildFallbackPanel({bool isTablet = false}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
@@ -1200,7 +1248,7 @@ class _ExpressionMirroringScreenState extends State<ExpressionMirroringScreen>
                     'Ikuti panduan di atas, tombol akan muncul sebentar lagi...',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dmSans(
-                      fontSize: 12,
+                      fontSize: isTablet ? 14.0 : 12.0,
                       color: _textMuted,
                     ),
                   ),
@@ -1220,6 +1268,8 @@ class _RaccooTipBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1246,7 +1296,7 @@ class _RaccooTipBubble extends StatelessWidget {
             child: Text(
               tip,
               style: GoogleFonts.dmSans(
-                fontSize: 16,
+                fontSize: isTablet ? 18.0 : 16.0,
                 color: _textDark,
                 height: 1.4,
               ),
